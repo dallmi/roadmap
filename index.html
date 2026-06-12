@@ -527,11 +527,12 @@
                         <span class="chart-subtitle">Bubble size = capacity demand (PD) · Color = status · Quadrants guide priority decisions</span>
                     </div>
                     <div class="chart-container tall"><canvas id="matrixChart"></canvas></div>
+                    <div class="insights-count" id="matrixUnsized"></div>
                 </div>
             </div>
             <div class="chart-card">
                 <div class="chart-title">Priority Ranking
-                    <span class="chart-subtitle">Score = Business Value ÷ Effort (pod weeks where sized), weighted by MoSCoW priority</span>
+                    <span class="chart-subtitle">Score = Business Value ÷ Pod Weeks, weighted by MoSCoW priority — unsized initiatives rank last without a score</span>
                 </div>
                 <div class="table-container">
                     <table id="prioTable">
@@ -542,7 +543,6 @@
                                 <th class="sort-header" data-col="workstream">Pod</th>
                                 <th class="sort-header" data-col="priority">Priority</th>
                                 <th class="sort-header text-right" data-col="value">Value</th>
-                                <th class="sort-header text-right" data-col="effort">Effort</th>
                                 <th class="sort-header text-right" data-col="podWeeks">Pod Wks</th>
                                 <th class="sort-header text-right" data-col="capTotal">Demand (PD)</th>
                                 <th class="sort-header text-right" data-col="score">Score</th>
@@ -748,14 +748,10 @@
                     <label>Business Value (1–10)</label>
                     <input type="number" id="fValue" min="1" max="10" value="5">
                 </div>
-                <div class="form-field" id="effortField">
-                    <label>Effort (1–10)</label>
-                    <input type="number" id="fEffort" min="1" max="10" value="5">
-                </div>
                 <div class="form-field" id="podWeeksField">
-                    <label>Epic Size (Pod Weeks)</label>
-                    <input type="number" id="fPodWeeks" min="0" step="0.5" placeholder="–">
-                    <span class="field-hint">Effort estimate, not duration. Overrides 1–10 effort in matrix &amp; score. Synced from the GitLab "Epic Size" label for linked items.</span>
+                    <label>Effort (Pod Weeks)</label>
+                    <input type="number" id="fPodWeeks" min="0" step="0.5" placeholder="unsized">
+                    <span class="field-hint">Effort estimate, not duration. Synced from the GitLab "Epic Size" label for linked items. Unsized items are ranked without a score and left out of the matrix.</span>
                 </div>
                 <div class="form-field span2" id="capField">
                     <label>Capacity Demand (person-days, total over duration)</label>
@@ -915,67 +911,67 @@
                 },
                 items: [
                     { id: 'i01', name: 'Intranet Search Revamp', workstream: 'Intranet Experience', type: 'epic',
-                      start: m(1), end: m(5), status: 'ontrack', priority: 'must', progress: 65, value: 9, effort: 7,
+                      start: m(1), end: m(5), status: 'ontrack', priority: 'must', progress: 65, value: 9, podWeeks: 3,
                       capacity: { dev: 80, ba: 25, qa: 30, sre: 20, sm: 14 }, dependsOn: [],
                       description: 'New search stack with semantic ranking across intranet content.' },
                     { id: 'i02', name: 'Personalized News Feed', workstream: 'Intranet Experience', type: 'epic',
-                      start: m(6), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 8, effort: 6,
+                      start: m(6), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 8, podWeeks: 2.5,
                       capacity: { dev: 60, ba: 20, qa: 25, sre: 12, sm: 10 }, dependsOn: ['i01'],
                       description: 'Role- and location-based targeting of news on the intranet home.' },
                     { id: 'i03', name: 'Content Migration Wave 3', workstream: 'Intranet Experience', type: 'epic',
-                      start: m(3), end: m(8), status: 'atrisk', priority: 'must', progress: 35, value: 7, effort: 6,
+                      start: m(3), end: m(8), status: 'atrisk', priority: 'must', progress: 35, value: 7, podWeeks: 2.5,
                       capacity: { dev: 35, ba: 35, qa: 25, sre: 8, sm: 10 }, dependsOn: [],
                       description: 'Migrate remaining legacy intranet sites to the new platform.' },
                     { id: 'i04', name: 'Email Distribution Platform Upgrade', workstream: 'Comms Channels & Solutions', type: 'epic',
-                      start: m(1), end: m(4), status: 'done', priority: 'must', progress: 100, value: 8, effort: 5,
+                      start: m(1), end: m(4), status: 'done', priority: 'must', progress: 100, value: 8, podWeeks: 2,
                       capacity: { dev: 40, ba: 15, qa: 20, sre: 15, sm: 8 }, dependsOn: [],
                       description: 'Upgrade mass-mail platform; foundation for targeted notifications.' },
                     { id: 'i05', name: 'Targeted Notifications Service', workstream: 'Comms Channels & Solutions', type: 'epic',
-                      start: m(5), end: m(9), status: 'ontrack', priority: 'must', progress: 30, value: 9, effort: 7,
+                      start: m(5), end: m(9), status: 'ontrack', priority: 'must', progress: 30, value: 9, podWeeks: 3,
                       capacity: { dev: 70, ba: 25, qa: 30, sre: 20, sm: 12 }, dependsOn: ['i04'],
                       description: 'Audience-targeted push/email notifications across channels.' },
                     { id: 'i06', name: 'Channel Consolidation', workstream: 'Comms Channels & Solutions', type: 'epic',
-                      start: m(8), end: m(12), status: 'planned', priority: 'should', progress: 0, value: 6, effort: 5,
+                      start: m(8), end: m(12), status: 'planned', priority: 'should', progress: 0, value: 6, podWeeks: 2,
                       capacity: { dev: 35, ba: 20, qa: 18, sre: 12, sm: 8 }, dependsOn: ['i05'],
                       description: 'Retire redundant comms channels, route through notification service.' },
                     { id: 'i07', name: 'Engagement Analytics Dashboard', workstream: 'Comms Measurements & Insights', type: 'epic',
-                      start: m(2), end: m(6), status: 'ontrack', priority: 'should', progress: 55, value: 8, effort: 5,
+                      start: m(2), end: m(6), status: 'ontrack', priority: 'should', progress: 55, value: 8, podWeeks: 2,
                       capacity: { dev: 45, ba: 25, qa: 20, sre: 10, sm: 10 }, dependsOn: [],
                       description: 'Self-service dashboard for reach and engagement across channels.' },
                     { id: 'i08', name: 'Campaign Attribution Model', workstream: 'Comms Measurements & Insights', type: 'epic',
-                      start: m(7), end: m(10), status: 'planned', priority: 'could', progress: 0, value: 6, effort: 6,
+                      start: m(7), end: m(10), status: 'planned', priority: 'could', progress: 0, value: 6, podWeeks: 2.5,
                       capacity: { dev: 30, ba: 25, qa: 15, sre: 5, sm: 6 }, dependsOn: ['i07'],
                       description: 'Attribute engagement uplift to campaigns and channels.' },
                     { id: 'i09', name: 'Comms Data Quality Framework', workstream: 'Comms Measurements & Insights', type: 'epic',
-                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 5, effort: 4,
+                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 5, podWeeks: 1.5,
                       capacity: { dev: 22, ba: 20, qa: 15, sre: 5, sm: 5 }, dependsOn: ['i07'],
                       description: 'Rule-based quality checks on tracking and audience data.' },
                     { id: 'i10', name: 'Speaker Brief Portal MVP', workstream: 'Speaker Brief', type: 'epic',
-                      start: m(2), end: m(6), status: 'atrisk', priority: 'must', progress: 45, value: 8, effort: 6,
+                      start: m(2), end: m(6), status: 'atrisk', priority: 'must', progress: 45, value: 8, podWeeks: 2.5,
                       capacity: { dev: 55, ba: 30, qa: 25, sre: 10, sm: 12 }, dependsOn: [],
                       description: 'Central portal for creating and approving executive speaker briefs.' },
                     { id: 'i11', name: 'Brief Workflow Automation', workstream: 'Speaker Brief', type: 'epic',
-                      start: m(6), end: m(9), status: 'planned', priority: 'should', progress: 0, value: 7, effort: 4,
+                      start: m(6), end: m(9), status: 'planned', priority: 'should', progress: 0, value: 7, podWeeks: 1.5,
                       capacity: { dev: 30, ba: 20, qa: 15, sre: 5, sm: 8 }, dependsOn: ['i10'],
                       description: 'Review/approval workflow with deadlines and notifications.' },
                     { id: 'i12', name: 'AI Brief Drafting Assistant', workstream: 'Speaker Brief', type: 'epic',
-                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 7, effort: 5,
+                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 7, podWeeks: 2,
                       capacity: { dev: 35, ba: 15, qa: 15, sre: 8, sm: 6 }, dependsOn: ['i11'],
                       description: 'LLM-assisted first drafts from source material and past briefs.' },
                     { id: 'm01', name: 'Search Go-Live', workstream: 'Intranet Experience', type: 'milestone',
-                      start: m(5), end: m(5), status: 'ontrack', priority: 'must', progress: 0, value: 9, effort: 1,
+                      start: m(5), end: m(5), status: 'ontrack', priority: 'must', progress: 0, value: 9,
                       capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i01'],
                       description: 'New intranet search live for all users.' },
                     { id: 'm02', name: 'Legacy Newsletter Decommissioned', workstream: 'Comms Channels & Solutions', type: 'milestone',
-                      start: m(10), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 7, effort: 1,
+                      start: m(10), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 7,
                       capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i05'],
                       description: 'Last legacy newsletter switched off.' },
                     { id: 'm03', name: 'Speaker Brief Go-Live', workstream: 'Speaker Brief', type: 'milestone',
-                      start: m(6), end: m(6), status: 'planned', priority: 'must', progress: 0, value: 8, effort: 1,
+                      start: m(6), end: m(6), status: 'planned', priority: 'must', progress: 0, value: 8,
                       capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i10'],
                       description: 'Portal MVP live for executive comms team.' },
                     { id: 'm04', name: 'Year-End Change Freeze', workstream: 'Comms Channels & Solutions', type: 'milestone',
-                      start: m(12), end: m(12), status: 'planned', priority: 'must', progress: 0, value: 5, effort: 1,
+                      start: m(12), end: m(12), status: 'planned', priority: 'must', progress: 0, value: 5,
                       capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: [],
                       description: 'No production changes from mid-December.' }
                 ]
@@ -992,6 +988,8 @@
                     state = JSON.parse(raw);
                     // migration: quarterly pod-week planning budget (12 weeks/quarter, 8–10 plannable)
                     if (!state.settings.podWeekBudget) state.settings.podWeekBudget = { min: 8, max: 10 };
+                    // migration: effort (1–10) replaced by pod weeks
+                    state.items.forEach(i => delete i.effort);
                     return;
                 }
             } catch (e) { console.warn('Failed to load saved data:', e); }
@@ -1025,11 +1023,11 @@
             }
             return null;
         }
-        // Effective effort: pod weeks (from GitLab Epic Size or manual) win over the generic 1–10 scale
-        function effEffort(it) { return it.podWeeks > 0 ? it.podWeeks : it.effort; }
+        // Effort = pod weeks. Items without a size have no score (ranked last, not in the matrix).
         function score(it) {
+            if (!(it.podWeeks > 0)) return null;
             const w = PRIO_META[it.priority]?.weight ?? 1;
-            return Math.round((it.value / Math.max(1, effEffort(it))) * w * 100) / 100;
+            return Math.round((it.value / it.podWeeks) * w * 100) / 100;
         }
         // Pod-week demand per quarter, spread evenly over an item's months in the displayed year
         function podWeeksModel(items) {
@@ -1359,7 +1357,7 @@
                     tt.innerHTML = `<div class="tt-title">${esc(it.name)}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
-                        ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : `Effort <b>${it.effort}</b>`} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
+                        ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
                         ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
                         ${it.gitlab ? `<div class="tt-row">GitLab: <b>${(it.gitlab.issues || []).filter(i => i.state === 'closed').length}/${(it.gitlab.issues || []).length} issues closed</b>${it.gitlab.missing ? ' · <b style="color:var(--danger)">epic missing</b>' : ''}</div>` : ''}
                         ${it.description ? `<div class="tt-row" style="margin-top:0.25rem">${esc(it.description)}</div>` : ''}`;
@@ -1433,7 +1431,7 @@
             id: 'quadrants',
             beforeDatasetsDraw(chart) {
                 const { ctx, chartArea: a, scales: { x, y } } = chart;
-                const mx = x.getPixelForValue(5.5), my = y.getPixelForValue(5.5);
+                const mx = x.getPixelForValue(x.max / 2), my = y.getPixelForValue(5.5);
                 ctx.save();
                 ctx.strokeStyle = '#CCCABC'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.moveTo(mx, a.top); ctx.lineTo(mx, a.bottom);
@@ -1450,7 +1448,11 @@
         };
 
         function renderMatrix() {
-            const epics = filteredItems().filter(i => i.type === 'epic');
+            const all = filteredItems().filter(i => i.type === 'epic');
+            const epics = all.filter(i => i.podWeeks > 0);
+            const unsized = all.length - epics.length;
+            document.getElementById('matrixUnsized').textContent =
+                unsized ? `${unsized} unsized initiative${unsized === 1 ? '' : 's'} not shown — set pod weeks via the GitLab "Epic Size" label or in the item editor.` : '';
             const ctx = document.getElementById('matrixChart');
             charts.matrix?.destroy();
             charts.matrix = new Chart(ctx, {
@@ -1458,7 +1460,7 @@
                 data: {
                     datasets: [{
                         data: epics.map(it => ({
-                            x: effEffort(it), y: it.value,
+                            x: it.podWeeks, y: it.value,
                             r: clamp(Math.sqrt(capTotal(it)) * 1.6, 6, 26),
                             label: it.name, id: it.id
                         })),
@@ -1474,12 +1476,11 @@
                         legend: { display: false },
                         tooltip: { callbacks: { label(c) {
                             const it = epics[c.dataIndex];
-                            const eff = it.podWeeks > 0 ? `${it.podWeeks} pod weeks` : `effort ${it.effort}`;
-                            return `${it.name}: value ${it.value}, ${eff}, ${capTotal(it)} PD`;
+                            return `${it.name}: value ${it.value}, ${it.podWeeks} pod weeks, ${capTotal(it)} PD`;
                         } } }
                     },
                     scales: {
-                        x: { min: 0, max: Math.max(11, ...epics.map(it => effEffort(it) + 1)), title: { display: true, text: 'Effort → (pod weeks where sized)', font: { size: 11 } }, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } } },
+                        x: { min: 0, max: Math.max(4, ...epics.map(it => it.podWeeks + 1)), title: { display: true, text: 'Effort (Pod Weeks) →', font: { size: 11 } }, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } } },
                         y: { min: 0, max: 11, title: { display: true, text: 'Business Value →', font: { size: 11 } }, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } } }
                     }
                 },
@@ -1491,8 +1492,8 @@
         function prioRows() {
             return filteredItems().filter(i => i.type === 'epic').map(it => ({
                 id: it.id, name: it.name, workstream: it.workstream, priority: it.priority,
-                value: it.value, effort: it.effort, podWeeks: it.podWeeks ?? 0,
-                capTotal: capTotal(it), score: score(it),
+                value: it.value, podWeeks: it.podWeeks ?? 0,
+                capTotal: capTotal(it), score: score(it) ?? -1,
                 status: it.status, deps: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ')
             }));
         }
@@ -1512,10 +1513,9 @@
                     <td>${esc(r.workstream)}</td>
                     <td><span class="badge ${PRIO_META[r.priority].badge}">${PRIO_META[r.priority].label}</span></td>
                     <td class="text-right">${r.value}</td>
-                    <td class="text-right">${r.podWeeks ? `<span style="color:var(--light-gray)">${r.effort}</span>` : r.effort}</td>
-                    <td class="text-right">${r.podWeeks ? `<b>${r.podWeeks}</b>` : '–'}</td>
+                    <td class="text-right">${r.podWeeks ? `<b>${r.podWeeks}</b>` : '<span style="color:var(--light-gray)">unsized</span>'}</td>
                     <td class="text-right">${fmt(r.capTotal)}</td>
-                    <td class="text-right"><b>${r.score.toFixed(2)}</b></td>
+                    <td class="text-right">${r.score < 0 ? '–' : `<b>${r.score.toFixed(2)}</b>`}</td>
                     <td><span class="badge ${STATUS_META[r.status].badge}">${STATUS_META[r.status].label}</span></td>
                     <td style="font-size:0.7rem;color:var(--medium-gray)">${esc(r.deps) || '–'}</td>
                 </tr>`).join('');
@@ -1742,7 +1742,6 @@
             document.getElementById('fPriority').value = it?.priority || 'should';
             document.getElementById('fProgress').value = it?.progress ?? 0;
             document.getElementById('fValue').value = it?.value ?? 5;
-            document.getElementById('fEffort').value = it?.effort ?? 5;
             document.getElementById('fPodWeeks').value = it?.podWeeks ?? '';
             ROLES.forEach(r => {
                 document.getElementById('fCap' + r.key.charAt(0).toUpperCase() + r.key.slice(1)).value = it?.capacity?.[r.key] ?? 0;
@@ -1775,7 +1774,6 @@
             const isMs = document.getElementById('fType').value === 'milestone';
             document.getElementById('endField').style.display = isMs ? 'none' : '';
             document.getElementById('progressField').style.display = isMs ? 'none' : '';
-            document.getElementById('effortField').style.display = isMs ? 'none' : '';
             document.getElementById('podWeeksField').style.display = isMs ? 'none' : '';
             document.getElementById('valueField').style.display = isMs ? 'none' : '';
             document.getElementById('capField').style.display = isMs ? 'none' : '';
@@ -1801,7 +1799,6 @@
                 priority: document.getElementById('fPriority').value,
                 progress: type === 'milestone' ? 0 : clamp(Number(document.getElementById('fProgress').value) || 0, 0, 100),
                 value: clamp(Number(document.getElementById('fValue').value) || 5, 1, 10),
-                effort: type === 'milestone' ? 1 : clamp(Number(document.getElementById('fEffort').value) || 5, 1, 10),
                 podWeeks: (() => {
                     if (type === 'milestone') return null;
                     const pw = parseFloat(document.getElementById('fPodWeeks').value);
@@ -1991,9 +1988,9 @@
                 'Start': it.start, 'End': it.type === 'milestone' ? it.start : it.end,
                 'Status': STATUS_META[it.status].label, 'Priority': PRIO_META[it.priority].label,
                 'Progress %': it.type === 'milestone' ? '' : (it.progress || 0),
-                'Business Value': it.value, 'Effort': it.type === 'milestone' ? '' : it.effort,
+                'Business Value': it.value,
                 'Pod Weeks': it.type === 'milestone' ? '' : (it.podWeeks ?? ''),
-                'Score': it.type === 'milestone' ? '' : score(it),
+                'Score': it.type === 'milestone' ? '' : (score(it) ?? ''),
                 'Demand Dev (PD)': it.capacity?.dev || 0, 'Demand BA (PD)': it.capacity?.ba || 0,
                 'Demand Test (PD)': it.capacity?.qa || 0, 'Demand SRE (PD)': it.capacity?.sre || 0,
                 'Demand SM (PD)': it.capacity?.sm || 0,
@@ -2033,13 +2030,13 @@
 
         function exportItemsCsv() {
             const items = filteredItems();
-            const columns = ['Pod', 'Name', 'Type', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'Effort', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
+            const columns = ['Pod', 'Name', 'Type', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
             const data = items.map(it => ({
                 Pod: it.workstream, Name: it.name,
                 Type: it.type === 'milestone' ? 'Milestone' : 'Initiative',
                 Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
                 Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
-                Value: it.value, Effort: it.effort, PodWeeks: it.podWeeks ?? '', Score: score(it),
+                Value: it.value, PodWeeks: it.podWeeks ?? '', Score: score(it) ?? '',
                 DependsOn: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join('; '),
                 Description: it.description || ''
             }));
@@ -2239,12 +2236,12 @@
             if (document.getElementById('pptIncludeTables').checked) {
                 const epics = prioRows().sort((a, b) => b.score - a.score).slice(0, 14);
                 const slide2 = pptx.addSlide();
-                addHeader(slide2, 'Priority Ranking', 'Score = business value ÷ effort, weighted by MoSCoW — decision basis for sequencing');
+                addHeader(slide2, 'Priority Ranking', 'Score = business value ÷ pod weeks, weighted by MoSCoW — decision basis for sequencing');
                 const headerOpts = { fill: { color: C.darkGray }, color: 'FFFFFF', bold: true, fontSize: 10, fontFace: 'Arial', valign: 'middle' };
                 const tblRows = [[
                     { text: '#', options: headerOpts }, { text: 'Initiative', options: headerOpts },
                     { text: 'Pod', options: headerOpts }, { text: 'Priority', options: headerOpts },
-                    { text: 'Value', options: headerOpts }, { text: 'Effort', options: headerOpts },
+                    { text: 'Value', options: headerOpts },
                     { text: 'Pod Wks', options: headerOpts },
                     { text: 'Demand (PD)', options: headerOpts }, { text: 'Score', options: headerOpts },
                     { text: 'Status', options: headerOpts }
@@ -2258,15 +2255,14 @@
                         { text: r.workstream, options: base },
                         { text: PRIO_META[r.priority].label, options: base },
                         { text: String(r.value), options: base },
-                        { text: String(r.effort), options: base },
-                        { text: r.podWeeks ? String(r.podWeeks) : '–', options: { ...base, bold: !!r.podWeeks } },
+                        { text: r.podWeeks ? String(r.podWeeks) : 'unsized', options: { ...base, bold: !!r.podWeeks } },
                         { text: String(r.capTotal), options: base },
-                        { text: r.score.toFixed(2), options: { ...base, bold: true } },
+                        { text: r.score < 0 ? '–' : r.score.toFixed(2), options: { ...base, bold: true } },
                         { text: STATUS_META[r.status].label, options: { ...base, color: statusFill[r.status] } }
                     ]);
                 });
                 slide2.addTable(tblRows, {
-                    x: ML, y: 1.2, w: 12.43, colW: [0.5, 3.0, 2.1, 1.0, 0.8, 0.8, 0.9, 1.3, 0.9, 1.13],
+                    x: ML, y: 1.2, w: 12.43, colW: [0.5, 3.6, 2.3, 1.0, 0.8, 0.9, 1.3, 0.9, 1.13],
                     border: { type: 'solid', color: C.lightGray, pt: 0.5 }, rowH: 0.32
                 });
 
@@ -2504,7 +2500,7 @@
         }
 
         // GitLab owns: name, dates (if set on the epic), closed→done, progress, epic snapshot.
-        // Manual fields (pod, MoSCoW, value/effort, capacity, deps, description) are never touched.
+        // Manual fields (pod, MoSCoW, value, capacity, deps, description) are never touched.
         function glApplyEpic(it, epic) {
             it.name = epic.title;
             it.gitlab.iid = epic.iid;
@@ -2662,7 +2658,7 @@
                 start, end,
                 status: epic.state === 'closed' ? 'done' : (start <= today ? 'ontrack' : 'planned'),
                 priority: document.getElementById('gaPriority').value,
-                progress: 0, value: 5, effort: 5,
+                progress: 0, value: 5,
                 podWeeks: epic.podWeeks ?? null,
                 capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 },
                 dependsOn: [],
