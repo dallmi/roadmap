@@ -248,10 +248,17 @@
             position: absolute; height: 0; border-top: 2px dashed var(--medium-gray);
             opacity: 0.6; pointer-events: none; z-index: 2;
         }
-        .rm-bar.done { opacity: 0.7; }
+        .rm-bar.done { opacity: 0.8; }
         .rm-bar.done .bar-name { text-decoration: line-through; text-decoration-thickness: 1px; }
-        .bar-check { color: #C9D48E; font-weight: 800; margin-right: 4px; flex: none; } /* derived light tint of RAG green for contrast on dark bars */
+        .bar-check { /* white check on RAG-green disc — readable on any bar color */
+            background: var(--success); color: var(--white);
+            width: 13px; height: 13px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 800; margin-right: 5px; flex: none;
+            border: 1px solid rgba(255,255,255,0.85); box-sizing: content-box;
+        }
         .rm-ms-label.done { text-decoration: line-through; color: var(--medium-gray); }
+        .ms-check { color: var(--success); font-weight: 800; text-decoration: none; display: inline-block; }
         .rm-bar.unplanned {
             background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.3) 0 5px, transparent 5px 11px);
         }
@@ -1404,7 +1411,7 @@
                     track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openDetails('${it.id}')"></div>
                         <div class="rm-ms-label${it.status === 'done' ? ' done' : ''}" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
-                        onclick="openDetails('${it.id}')">${it.status === 'done' ? '✓ ' : ''}${esc(displayName(it))}</div>`;
+                        onclick="openDetails('${it.id}')">${it.status === 'done' ? '<span class="ms-check">✓</span> ' : ''}${esc(displayName(it))}</div>`;
                 });
 
                 html += `<div class="rm-lane" style="min-height:${h}px">
