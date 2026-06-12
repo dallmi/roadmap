@@ -240,6 +240,10 @@
         }
         .rm-bar.dimmed { opacity: 0.25; }
         .rm-bar.dep-highlight { outline: 2px solid var(--black); outline-offset: 1px; z-index: 4; }
+        .rm-baseline {
+            position: absolute; height: 0; border-top: 2px dashed var(--medium-gray);
+            opacity: 0.6; pointer-events: none; z-index: 2;
+        }
 
         .rm-milestone {
             position: absolute; width: 14px; height: 14px; transform: rotate(45deg);
@@ -397,9 +401,11 @@
             border: 1px solid var(--danger); background: var(--danger-light); color: var(--danger);
             border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.75rem; margin-bottom: 0.75rem;
         }
-        .gl-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
-        .gl-dot.open { background: var(--success); }
-        .gl-dot.closed { background: var(--dark-gray); }
+        .gl-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; box-sizing: border-box; }
+        .gl-dot.open { background: var(--white); border: 1.5px solid var(--light-gray); }
+        .gl-check { color: var(--success); font-weight: 700; font-size: 0.8rem; line-height: 1; flex: none; width: 10px; }
+        .gl-issue.closed a { color: var(--medium-gray); text-decoration: line-through; }
+        .gl-issue.closed a:hover { text-decoration: line-through underline; }
         .gl-issue {
             display: flex; gap: 0.4rem; align-items: center; padding: 0.3rem 0;
             font-size: 0.75rem; border-bottom: 1px solid var(--lighter-gray);
@@ -512,6 +518,7 @@
                     <span class="legend-item"><span class="legend-swatch" style="background:#BD000C"></span>Delayed</span>
                     <span class="legend-item"><span class="legend-swatch" style="background:#404040"></span>Done</span>
                     <span class="legend-item"><span class="legend-diamond"></span>Milestone</span>
+                    <span class="legend-item"><span style="width:16px;border-top:2px dashed #7A7870;display:inline-block"></span>Plan (baseline)</span>
                 </div>
             </div>
             <div class="roadmap-wrap">
@@ -1013,6 +1020,23 @@
         function idxToLabel(i) { return MONTHS[i] + ' ' + state.settings.year; }
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
         function byId(id) { return state.items.find(i => i.id === id); }
+        function ymDiff(a, b) { // months from a to b
+            const [ay, am] = a.split('-').map(Number), [by, bm] = b.split('-').map(Number);
+            return (by - ay) * 12 + (bm - am);
+        }
+        // Slip vs the frozen baseline (plan at assign time): months the end (epics)
+        // or date (milestones) moved. null = no baseline or on plan.
+        function slipMonths(it) {
+            const b = it.gitlab?.baseline;
+            if (!b) return null;
+            const d = it.type === 'milestone' ? ymDiff(b.start, it.start) : ymDiff(b.end, it.end);
+            return d === 0 ? null : d;
+        }
+        function slipBadge(it) {
+            const d = slipMonths(it);
+            if (d == null) return '';
+            return ` <span class="badge ${d > 0 ? 'badge-danger' : 'badge-success'}" title="vs. plan at assign time (${it.gitlab.baseline.start} → ${it.gitlab.baseline.end})">${d > 0 ? '+' : ''}${d}M</span>`;
+        }
         function capTotal(it) { return ROLES.reduce((s, r) => s + (Number(it.capacity?.[r.key]) || 0), 0); }
         // "Epic Size" label → pod weeks (effort estimate, not duration).
         // Matches "2 Pod Weeks", "Epic Size::3 Pod Weeks", "1 pod-week", "0.5 Pod Weeks" …
@@ -1243,6 +1267,12 @@
                         ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
                         <span class="bar-progress" style="width:${it.progress || 0}%"></span>
                     </div>`;
+                    // baseline ghost: the originally planned span, when dates have moved since assign
+                    const b = it.gitlab?.baseline;
+                    if (b && (b.start !== it.start || b.end !== it.end) && ymToIdx(b.start) <= 11 && ymToIdx(b.end) >= 0) {
+                        const bs = clamp(ymToIdx(b.start), 0, 11), be = clamp(ymToIdx(b.end), 0, 11);
+                        track += `<div class="rm-baseline" style="left:calc(${bs / 12 * 100}% + 2px);width:calc(${(be - bs + 1) / 12 * 100}% - 4px);top:${top + 29}px;"></div>`;
+                    }
                 });
 
                 const msTop = PAD + nRows * ROW_H + 8;
@@ -1360,6 +1390,16 @@
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
                         ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
                         ${it.gitlab ? `<div class="tt-row">GitLab: <b>${(it.gitlab.issues || []).filter(i => i.state === 'closed').length}/${(it.gitlab.issues || []).length} issues closed</b>${it.gitlab.missing ? ' · <b style="color:var(--danger)">epic missing</b>' : ''}</div>` : ''}
+                        ${(() => {
+                            const b = it.gitlab?.baseline, d = slipMonths(it);
+                            if (!b || (d == null && b.podWeeks === (it.podWeeks ?? null))) return '';
+                            const parts = [];
+                            if (d != null || b.start !== it.start || b.end !== it.end)
+                                parts.push(`Plan <b>${b.start}${it.type === 'milestone' ? '' : ' → ' + b.end}</b>${d != null ? ` · <b style="color:var(--${d > 0 ? 'danger' : 'success'})">${d > 0 ? '+' : ''}${d} month${Math.abs(d) === 1 ? '' : 's'}</b>` : ''}`);
+                            if (b.podWeeks != null && b.podWeeks !== (it.podWeeks ?? null))
+                                parts.push(`Size plan <b>${b.podWeeks} PW</b> → now <b>${it.podWeeks ?? '–'} PW</b>`);
+                            return `<div class="tt-row">${parts.join(' · ')}</div>`;
+                        })()}
                         ${it.description ? `<div class="tt-row" style="margin-top:0.25rem">${esc(it.description.length > 260 ? it.description.slice(0, 260) + '…' : it.description)}</div>` : ''}`;
                     tt.style.display = 'block';
                     const x = Math.min(e.clientX + 14, window.innerWidth - 340);
@@ -1694,8 +1734,8 @@
                     <td><b>${esc(it.name)}</b>${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
                     <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
-                    <td>${it.start}</td>
-                    <td>${it.type === 'milestone' ? '–' : it.end}</td>
+                    <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
+                    <td>${it.type === 'milestone' ? '–' : it.end + slipBadge(it)}</td>
                     <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
                     <td><span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span></td>
                     <td class="text-right">${it.type === 'milestone' ? '–' : (it.progress || 0) + '%'}</td>
@@ -1763,6 +1803,11 @@
                         <span style="color:var(--medium-gray);font-size:0.68rem">${gi.lastSync ? 'synced ' + new Date(gi.lastSync).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
                         <button class="gl-link-btn" style="margin-left:auto;color:var(--danger)" onclick="glUnlinkFromEditor()">Unlink</button>
                     </div>
+                    ${gi.baseline ? `<div style="font-size:0.7rem;color:var(--medium-gray);margin-bottom:0.25rem">
+                        Baseline ${esc(gi.baseline.start)} → ${esc(gi.baseline.end)}${gi.baseline.podWeeks != null ? ` · ${gi.baseline.podWeeks} PW` : ''}
+                        (set ${new Date(gi.baseline.capturedAt).toLocaleDateString('en-GB')})${slipMonths(it) != null ? ` · current slip <b style="color:var(--${slipMonths(it) > 0 ? 'danger' : 'success'})">${slipMonths(it) > 0 ? '+' : ''}${slipMonths(it)}M</b>` : ' · on plan'}
+                        <button class="gl-link-btn" style="margin-left:0.5rem" onclick="glRebaseline()">Re-baseline</button>
+                    </div>` : ''}
                     ${iss.length ? `<div style="font-size:0.7rem;color:var(--medium-gray);margin-bottom:0.25rem">${closed}/${iss.length} issues closed</div>` : ''}
                     ${glLinksHtml({ issues: gi.issues || [], childEpics: gi.childEpics, relatedEpics: gi.relatedEpics })}`;
             }
@@ -1826,6 +1871,14 @@
             saveState(); refreshFilterOptions(); renderAll();
         }
         function deleteItemFromModal() { if (editingId) { closeEditor(); deleteItem(editingId); } }
+        function glRebaseline() {
+            const it = editingId ? byId(editingId) : null;
+            if (!it?.gitlab) return;
+            if (!confirm('Set the baseline to the current dates and size? The previous plan reference is replaced.')) return;
+            it.gitlab.baseline = { start: it.start, end: it.end, podWeeks: it.podWeeks ?? null, capturedAt: new Date().toISOString() };
+            saveState();
+            openEditor(it.id); // re-render the GitLab block
+        }
         function glUnlinkFromEditor() {
             const it = editingId ? byId(editingId) : null;
             if (!it?.gitlab) return;
@@ -1995,6 +2048,8 @@
                 'Demand Test (PD)': it.capacity?.qa || 0, 'Demand SRE (PD)': it.capacity?.sre || 0,
                 'Demand SM (PD)': it.capacity?.sm || 0,
                 'Depends On': (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', '),
+                'Plan Start': it.gitlab?.baseline?.start || '', 'Plan End': it.gitlab?.baseline?.end || '',
+                'Slip (M)': slipMonths(it) ?? '',
                 'Description': it.description || ''
             }));
             buildDataSheet(wb, 'Items', itemRows, Object.keys(itemRows[0] || { Name: '' }));
@@ -2503,6 +2558,11 @@
             if (!linked.length) return;
             const byId2 = new Map(gl.epics.map(e => [e.id, e]));
             for (const it of linked) {
+                // freeze the plan once: items linked before baseline support get today's
+                // values as their baseline on first sync (best available approximation)
+                if (!it.gitlab.baseline) {
+                    it.gitlab.baseline = { start: it.start, end: it.end, podWeeks: it.podWeeks ?? null, capturedAt: new Date().toISOString() };
+                }
                 const epic = byId2.get(it.gitlab.id);
                 if (epic) {
                     it.gitlab.missing = false;
@@ -2660,9 +2720,10 @@
                 ${glConfigured() ? 'No epics match.' : 'Not connected.'}</td></tr>`;
         }
 
-        function glLinkRow(dot, title, url, meta) {
-            return `<div class="gl-issue">
-                <span class="gl-dot ${dot}"></span>
+        function glLinkRow(state, title, url, meta) {
+            const closed = state === 'closed';
+            return `<div class="gl-issue${closed ? ' closed' : ''}">
+                ${closed ? '<span class="gl-check">✓</span>' : '<span class="gl-dot open"></span>'}
                 <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
                 <span class="gl-issue-meta">${meta}</span>
             </div>`;
@@ -2745,6 +2806,7 @@
                     issues: gl.linksByEpic[epic.id]?.issues || null,
                     childEpics: gl.linksByEpic[epic.id]?.childEpics || null,
                     relatedEpics: gl.linksByEpic[epic.id]?.relatedEpics || null,
+                    baseline: { start, end, podWeeks: epic.podWeeks ?? null, capturedAt: new Date().toISOString() },
                     lastSync: gl.fetchedAt
                 }
             };
