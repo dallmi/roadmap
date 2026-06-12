@@ -1,0 +1,2853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technology Roadmap</title>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+
+    <!-- Chart.js (priority matrix + capacity charts) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- ExcelJS for styled XLSX export -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+    <!-- PptxGenJS for native-shape PowerPoint export -->
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
+    <style>
+        :root {
+            --primary: #E60000;
+            --primary-dark: #8A000A;
+            --black: #000000;
+            --dark-gray: #404040;
+            --medium-gray: #7A7870;
+            --light-gray: #CCCABC;
+            --lighter-gray: #ECEBE4;
+            --page-bg: #F7F7F5;
+            --row-alt: #F8F7F2;
+            --white: #FFFFFF;
+            --success: #6F7A1A;
+            --success-light: #F0F2E6;
+            --warning: #E4A911;
+            --warning-light: #FDF6E3;
+            --danger: #BD000C;
+            --danger-light: #FFEBE6;
+            --info: #8E8D83;
+            --info-light: #ECEBE4;
+            --link: #0C7EC6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background-color: var(--page-bg);
+            color: var(--dark-gray);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--white);
+            color: var(--black);
+            padding: 0.75rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding-left: 0.75rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .header-controls { display: flex; gap: 1rem; align-items: center; }
+
+        .year-selector { display: flex; gap: 0.5rem; align-items: center; }
+        .year-selector label { font-size: 0.8rem; color: var(--medium-gray); font-weight: 500; }
+        .year-selector select {
+            padding: 0.4rem 0.75rem;
+            border: 1px solid var(--light-gray);
+            border-radius: 4px;
+            font-size: 0.8rem;
+            background: var(--white);
+        }
+        .year-selector select:focus { outline: none; border-color: var(--primary); }
+
+        .btn {
+            padding: 0.4rem 0.75rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--black); color: var(--white); }
+        .btn-primary:hover { background: var(--dark-gray); }
+        .btn-secondary { background: transparent; color: var(--dark-gray); border: 1px solid var(--light-gray); }
+        .btn-secondary:hover { background: var(--light-gray); }
+        .btn-danger { background: var(--danger); color: var(--white); }
+        .btn-danger:hover { background: var(--primary-dark); }
+
+        .data-status {
+            display: flex; align-items: center; gap: 0.5rem;
+            font-size: 0.7rem; color: var(--medium-gray);
+            padding: 0.25rem 0.5rem; background: var(--lighter-gray); border-radius: 4px;
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+        .container { max-width: 1800px; margin: 0 auto; padding: 1rem; }
+
+        /* ── Filter bar ── */
+        .filter-bar {
+            display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+            background: var(--white); border: 1px solid var(--light-gray);
+            border-radius: 6px; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem;
+        }
+        .filter-bar label { font-size: 0.7rem; color: var(--medium-gray); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+        .filter-select {
+            padding: 0.4rem 0.75rem; border: 1px solid var(--light-gray);
+            border-radius: 4px; font-size: 0.8rem; background: var(--white);
+        }
+        .search-input {
+            min-width: 180px; padding: 0.4rem 0.75rem;
+            border: 1px solid var(--light-gray); border-radius: 4px; font-size: 0.8rem;
+        }
+        .search-input:focus, .filter-select:focus { outline: none; border-color: var(--primary); }
+        .clear-filters { font-size: 0.7rem; color: var(--medium-gray); cursor: pointer; text-decoration: underline; background: none; border: none; }
+        .filter-count { font-size: 0.75rem; color: var(--medium-gray); margin-left: auto; }
+
+        /* ── KPI cards ── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.75rem; margin-bottom: 0.75rem;
+        }
+        .kpi-card {
+            background: var(--white); border-radius: 6px; padding: 1rem;
+            border: 1px solid var(--light-gray); transition: all 0.2s; position: relative;
+        }
+        .kpi-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); transform: translateY(-1px); }
+        .kpi-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; border-radius: 6px 6px 0 0;
+        }
+        .kpi-card.highlight::before { background: var(--primary); }
+        .kpi-card.success::before { background: var(--success); }
+        .kpi-card.warning::before { background: var(--warning); }
+        .kpi-card.danger::before { background: var(--danger); }
+        .kpi-card.info::before { background: var(--info); }
+        .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--medium-gray); margin-bottom: 0.25rem; }
+        .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--black); line-height: 1.2; }
+        .kpi-subtitle { font-size: 0.65rem; color: var(--medium-gray); margin-top: 0.25rem; }
+
+        /* ── Nav tabs ── */
+        .nav-tabs {
+            display: flex; gap: 0; background: var(--white);
+            border-radius: 8px 8px 0 0; border-bottom: 2px solid var(--light-gray);
+            overflow-x: auto;
+        }
+        .nav-tab {
+            padding: 0.75rem 1.25rem; background: transparent; border: none; cursor: pointer;
+            font-size: 0.85rem; font-weight: 500; color: var(--medium-gray);
+            border-bottom: 2px solid transparent; margin-bottom: -2px;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .nav-tab:hover { color: var(--dark-gray); background: var(--lighter-gray); }
+        .nav-tab.active { color: var(--black); border-bottom-color: var(--primary); }
+        .nav-content { display: none; background: var(--white); border-radius: 0 0 8px 8px; padding: 1rem; }
+        .nav-content.active { display: block; }
+
+        /* ── Roadmap timeline ── */
+        .rm-toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .rm-toolbar .seg { display: flex; border: 1px solid var(--light-gray); border-radius: 4px; overflow: hidden; }
+        .rm-toolbar .seg button {
+            padding: 0.35rem 0.75rem; font-size: 0.75rem; border: none; background: var(--white);
+            cursor: pointer; color: var(--medium-gray); font-weight: 500;
+        }
+        .rm-toolbar .seg button.active { background: var(--dark-gray); color: var(--white); }
+        .rm-toolbar .toggle-label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--medium-gray); cursor: pointer; user-select: none; }
+
+        .legend { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-left: auto; }
+        .legend-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--medium-gray); }
+        .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+        .legend-diamond { width: 9px; height: 9px; transform: rotate(45deg); background: var(--primary); }
+
+        .roadmap-wrap { overflow-x: auto; border: 1px solid var(--light-gray); border-radius: 6px; }
+        .roadmap { min-width: 1100px; position: relative; background: var(--white); }
+
+        .rm-header { display: flex; position: sticky; top: 0; z-index: 5; }
+        .rm-label-col { width: 200px; min-width: 200px; border-right: 1px solid var(--light-gray); background: var(--lighter-gray); }
+        .rm-grid-col { flex: 1; position: relative; }
+
+        .rm-quarters, .rm-months { display: flex; }
+        .rm-quarters .cell {
+            flex: 1; text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--dark-gray);
+            background: var(--lighter-gray); padding: 0.4rem 0; border-right: 1px solid var(--light-gray);
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .rm-quarters .cell:last-child { border-right: none; }
+        .rm-months .cell {
+            flex: 1; text-align: center; font-size: 0.65rem; font-weight: 500; color: var(--medium-gray);
+            background: var(--row-alt); padding: 0.2rem 0; border-right: 1px solid var(--lighter-gray);
+            border-bottom: 1px solid var(--light-gray);
+        }
+        .rm-months .cell:nth-child(3n) { border-right: 1px solid var(--light-gray); }
+        .rm-months .cell:last-child { border-right: none; }
+        .rm-header .rm-label-col .hd {
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+            color: var(--medium-gray); padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid var(--light-gray); height: 100%;
+            display: flex; align-items: flex-end;
+        }
+
+        .rm-body { position: relative; }
+        .rm-lane { display: flex; border-bottom: 1px solid var(--lighter-gray); }
+        .rm-lane:last-child { border-bottom: none; }
+        .rm-lane-label {
+            width: 200px; min-width: 200px; padding: 0.6rem 0.75rem;
+            border-right: 1px solid var(--light-gray); background: var(--row-alt);
+        }
+        .rm-lane-label .ws-name { font-size: 0.8rem; font-weight: 600; color: var(--dark-gray); }
+        .rm-lane-label .ws-meta { font-size: 0.65rem; color: var(--medium-gray); margin-top: 0.15rem; }
+        .rm-lane-track { flex: 1; position: relative; }
+
+        .rm-gridlines { position: absolute; inset: 0; display: flex; pointer-events: none; }
+        .rm-gridlines .gl { flex: 1; border-right: 1px solid var(--lighter-gray); }
+        .rm-gridlines .gl.q { border-right: 1px solid var(--light-gray); }
+        .rm-gridlines .gl:last-child { border-right: none; }
+
+        .rm-bar {
+            position: absolute; height: 26px; border-radius: 3px;
+            display: flex; align-items: center; padding: 0 8px;
+            font-size: 0.7rem; font-weight: 600; color: var(--white);
+            cursor: pointer; white-space: nowrap; overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+            transition: filter 0.15s, box-shadow 0.15s;
+        }
+        .rm-bar:hover { filter: brightness(1.08); box-shadow: 0 2px 6px rgba(0,0,0,0.25); z-index: 4; }
+        .rm-bar .bar-name { overflow: hidden; text-overflow: ellipsis; }
+        .rm-bar .bar-pct { margin-left: auto; padding-left: 6px; font-weight: 400; opacity: 0.85; font-size: 0.65rem; }
+        .rm-bar .bar-progress {
+            position: absolute; left: 0; bottom: 0; height: 3px;
+            background: rgba(255,255,255,0.85); border-radius: 0 2px 2px 0;
+        }
+        .rm-bar.dimmed { opacity: 0.25; }
+        .rm-bar.dep-highlight { outline: 2px solid var(--black); outline-offset: 1px; z-index: 4; }
+
+        .rm-milestone {
+            position: absolute; width: 14px; height: 14px; transform: rotate(45deg);
+            background: var(--primary); border: 2px solid var(--white);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); cursor: pointer; z-index: 3;
+        }
+        .rm-milestone:hover { filter: brightness(1.15); }
+        .rm-milestone.done { background: var(--dark-gray); }
+        .rm-ms-label {
+            position: absolute; font-size: 0.62rem; color: var(--dark-gray); font-weight: 600;
+            white-space: nowrap; cursor: pointer; z-index: 3;
+        }
+
+        .rm-today {
+            position: absolute; top: 0; bottom: 0; width: 0;
+            border-left: 2px dashed var(--primary); z-index: 6; pointer-events: none;
+        }
+        .rm-today .chip {
+            position: absolute; top: 2px; left: 3px;
+            background: var(--primary); color: var(--white);
+            font-size: 0.6rem; font-weight: 600; padding: 1px 5px; border-radius: 2px;
+        }
+
+        .dep-svg { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+
+        .rm-tooltip {
+            position: fixed; z-index: 1000; background: var(--white);
+            border: 1px solid var(--light-gray); border-top: 3px solid var(--primary);
+            border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            padding: 0.6rem 0.75rem; font-size: 0.75rem; max-width: 320px;
+            pointer-events: none; display: none;
+        }
+        .rm-tooltip .tt-title { font-weight: 600; color: var(--black); margin-bottom: 0.2rem; }
+        .rm-tooltip .tt-row { color: var(--medium-gray); }
+        .rm-tooltip .tt-row b { color: var(--dark-gray); font-weight: 600; }
+
+        /* ── Tables ── */
+        .table-container { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        th {
+            background: var(--lighter-gray); padding: 0.6rem 0.75rem; text-align: left;
+            font-weight: 600; color: var(--dark-gray); border-bottom: 1px solid var(--light-gray);
+            position: sticky; top: 0; z-index: 1;
+        }
+        td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--light-gray); color: var(--dark-gray); }
+        tr:nth-child(even) td { background: var(--row-alt); }
+        tr:hover td { background: var(--lighter-gray); }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
+        .sort-header { cursor: pointer; user-select: none; position: relative; padding-right: 1.2rem !important; white-space: nowrap; }
+        .sort-header:hover { background: var(--lighter-gray); }
+        .sort-header::after { content: '\2195'; position: absolute; right: 0.3rem; opacity: 0.3; font-size: 0.7rem; }
+        .sort-header.asc::after { content: '\2191'; opacity: 0.8; }
+        .sort-header.desc::after { content: '\2193'; opacity: 0.8; }
+
+        .badge {
+            display: inline-block; padding: 0.2rem 0.4rem; border-radius: 3px;
+            font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .badge-success { background: var(--success-light); color: var(--success); }
+        .badge-warning { background: var(--warning-light); color: var(--warning); }
+        .badge-danger { background: var(--danger-light); color: var(--danger); }
+        .badge-info { background: var(--info-light); color: var(--info); }
+        .badge-neutral { background: var(--light-gray); color: var(--dark-gray); }
+        .badge-done { background: var(--dark-gray); color: var(--white); }
+        .badge-must { background: var(--danger-light); color: var(--danger); }
+        .badge-should { background: var(--warning-light); color: var(--warning); }
+        .badge-could { background: var(--info-light); color: var(--info); }
+
+        .row-actions button {
+            background: none; border: none; cursor: pointer; color: var(--link);
+            font-size: 0.75rem; text-decoration: underline; padding: 0 0.25rem;
+        }
+        .row-actions button.del { color: var(--danger); }
+
+        /* ── Charts ── */
+        .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem; }
+        .chart-card { background: var(--white); border-radius: 6px; padding: 1rem; border: 1px solid var(--light-gray); }
+        .chart-card.full-width { grid-column: 1 / -1; }
+        .chart-title {
+            font-size: 0.9rem; font-weight: 600; color: var(--dark-gray);
+            margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--light-gray);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chart-subtitle { font-size: 0.7rem; color: var(--medium-gray); font-weight: 400; }
+        .chart-container { height: 280px; position: relative; }
+        .chart-container.tall { height: 380px; }
+
+        /* ── Export tab ── */
+        .export-btn {
+            padding: 0.4rem 0.75rem; border: 1px solid var(--light-gray); border-radius: 4px;
+            font-size: 0.8rem; cursor: pointer; background: var(--white); color: var(--dark-gray);
+            font-weight: 500; transition: background 0.2s;
+        }
+        .export-btn:hover { background: var(--lighter-gray); border-color: var(--medium-gray); }
+        .export-btn.accent { background: var(--black); color: var(--white); border-color: var(--black); }
+        .export-btn.accent:hover { background: var(--dark-gray); }
+        .export-section { border: 1px solid var(--light-gray); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
+        .export-section h3 { font-size: 0.9rem; font-weight: 600; color: var(--dark-gray); margin-bottom: 0.25rem; }
+        .export-section .hint { font-size: 0.75rem; color: var(--medium-gray); margin-bottom: 0.75rem; }
+        .export-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+        .radio-group { display: flex; gap: 1rem; align-items: center; }
+        .radio-group label { display: flex; gap: 0.3rem; align-items: center; font-size: 0.8rem; color: var(--dark-gray); cursor: pointer; }
+        .insights-count { font-size: 0.8rem; color: var(--medium-gray); margin: 0.5rem 0; }
+
+        /* ── Capacity ── */
+        .team-config { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1rem; }
+        .team-config .tc-field label { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--medium-gray); margin-bottom: 0.2rem; }
+        .team-config .tc-field input {
+            width: 80px; padding: 0.35rem 0.5rem; border: 1px solid var(--light-gray);
+            border-radius: 4px; font-size: 0.8rem;
+        }
+        .util-cell { font-weight: 600; }
+
+        /* ── Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+            z-index: 200; align-items: flex-start; justify-content: center; padding: 3rem 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--white); border-radius: 6px; border-top: 3px solid var(--primary);
+            width: 680px; max-width: 100%; max-height: 85vh; overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 1.25rem 1.5rem;
+        }
+        .modal h2 { font-size: 1rem; font-weight: 600; color: var(--black); margin-bottom: 1rem; }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem 1rem; }
+        .form-field { display: flex; flex-direction: column; gap: 0.25rem; }
+        .form-field.span2 { grid-column: 1 / -1; }
+        .form-field label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--medium-gray); font-weight: 600; }
+        .form-field input, .form-field select, .form-field textarea {
+            padding: 0.45rem 0.6rem; border: 1px solid var(--light-gray); border-radius: 4px;
+            font-size: 0.85rem; font-family: inherit; background: var(--white);
+        }
+        .form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline: none; border-color: var(--primary); }
+        .form-field textarea { resize: vertical; min-height: 56px; }
+        .form-field select[multiple] { min-height: 96px; }
+        .cap-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--lighter-gray); }
+        .modal-actions .left { margin-right: auto; }
+        .field-hint { font-size: 0.65rem; color: var(--medium-gray); }
+
+        /* ── GitLab integration ── */
+        .gl-bar {
+            display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+            border: 1px solid var(--light-gray); border-radius: 6px;
+            padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; background: var(--row-alt);
+            font-size: 0.8rem;
+        }
+        .gl-bar .gl-conn { font-weight: 600; color: var(--dark-gray); }
+        .gl-bar .gl-meta { font-size: 0.7rem; color: var(--medium-gray); }
+        .gl-bar .gl-actions { margin-left: auto; display: flex; gap: 0.5rem; }
+        .gl-error {
+            border: 1px solid var(--danger); background: var(--danger-light); color: var(--danger);
+            border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.75rem; margin-bottom: 0.75rem;
+        }
+        .gl-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+        .gl-dot.open { background: var(--success); }
+        .gl-dot.closed { background: var(--dark-gray); }
+        .gl-issue {
+            display: flex; gap: 0.4rem; align-items: center; padding: 0.3rem 0;
+            font-size: 0.75rem; border-bottom: 1px solid var(--lighter-gray);
+        }
+        .gl-issue:last-child { border-bottom: none; }
+        .gl-issue a { color: var(--link); text-decoration: none; }
+        .gl-issue a:hover { text-decoration: underline; }
+        .gl-issue .gl-issue-meta { margin-left: auto; color: var(--medium-gray); font-size: 0.68rem; white-space: nowrap; }
+        .gl-issues-cell { background: var(--page-bg) !important; padding: 0.5rem 1rem 0.5rem 2rem !important; }
+        .gl-label-chip {
+            display: inline-block; padding: 0.1rem 0.35rem; border-radius: 3px; margin-right: 0.25rem;
+            font-size: 0.62rem; background: var(--lighter-gray); color: var(--medium-gray);
+        }
+        .gl-link-btn {
+            background: none; border: none; cursor: pointer; color: var(--link);
+            font-size: 0.75rem; text-decoration: underline; padding: 0;
+        }
+        .gl-info-box {
+            border: 1px solid var(--light-gray); border-left: 3px solid var(--link);
+            border-radius: 4px; padding: 0.6rem 0.75rem; background: var(--page-bg);
+            font-size: 0.75rem; max-height: 220px; overflow-y: auto;
+        }
+        .gl-spin {
+            display: inline-block; width: 12px; height: 12px; border: 2px solid var(--light-gray);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: glspin 0.8s linear infinite; vertical-align: -2px;
+        }
+        @keyframes glspin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 0.75rem; padding: 0.75rem 1rem; }
+            .header-controls { flex-wrap: wrap; justify-content: center; }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Technology Roadmap</h1>
+        <div class="header-controls">
+            <div class="year-selector">
+                <label>Year:</label>
+                <select id="yearSelect"></select>
+            </div>
+            <button class="btn btn-primary" onclick="openEditor()">+ Add Item</button>
+            <button class="export-btn" onclick="exportPptx()" title="Export current filtered view to PowerPoint">Export PPT</button>
+            <div class="data-status" id="dataStatus">
+                <span class="status-dot"></span>
+                <span id="statusText">Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Filter bar (applies to all views and exports) -->
+        <div class="filter-bar">
+            <label>Filter</label>
+            <select class="filter-select" id="fltPod" onchange="applyFilters()"><option value="">All Pods</option></select>
+            <select class="filter-select" id="fltStatus" onchange="applyFilters()">
+                <option value="">All Status</option>
+                <option value="planned">Planned</option>
+                <option value="ontrack">On Track</option>
+                <option value="atrisk">At Risk</option>
+                <option value="delayed">Delayed</option>
+                <option value="done">Done</option>
+            </select>
+            <select class="filter-select" id="fltPriority" onchange="applyFilters()">
+                <option value="">All Priorities</option>
+                <option value="must">Must</option>
+                <option value="should">Should</option>
+                <option value="could">Could</option>
+            </select>
+            <select class="filter-select" id="fltType" onchange="applyFilters()">
+                <option value="">All Types</option>
+                <option value="epic">Initiatives</option>
+                <option value="milestone">Milestones</option>
+            </select>
+            <input type="text" class="search-input" id="fltSearch" placeholder="Search items…" oninput="applyFilters()">
+            <button class="clear-filters" onclick="clearFilters()">Clear filters</button>
+            <span class="filter-count" id="filterCount"></span>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <!-- Navigation -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-nav="roadmap">Roadmap</button>
+            <button class="nav-tab" data-nav="priorities">Priorities</button>
+            <button class="nav-tab" data-nav="capacity">Capacity</button>
+            <button class="nav-tab" data-nav="items">Items</button>
+            <button class="nav-tab" data-nav="gitlab" id="glTabBtn">GitLab</button>
+            <button class="nav-tab" data-nav="export">Export</button>
+        </div>
+
+        <!-- ── Roadmap tab ── -->
+        <div class="nav-content active" id="navRoadmap">
+            <div class="rm-toolbar">
+                <div class="seg" id="granularitySeg">
+                    <button data-gran="quarter" onclick="setGranularity('quarter')">Quarters</button>
+                    <button data-gran="month" class="active" onclick="setGranularity('month')">Quarters + Months</button>
+                </div>
+                <label class="toggle-label"><input type="checkbox" id="showDeps" checked onchange="renderRoadmap()"> Show dependencies</label>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-swatch" style="background:#B8B3A2"></span>Planned</span>
+                    <span class="legend-item"><span class="legend-swatch" style="background:#6F7A1A"></span>On Track</span>
+                    <span class="legend-item"><span class="legend-swatch" style="background:#E4A911"></span>At Risk</span>
+                    <span class="legend-item"><span class="legend-swatch" style="background:#BD000C"></span>Delayed</span>
+                    <span class="legend-item"><span class="legend-swatch" style="background:#404040"></span>Done</span>
+                    <span class="legend-item"><span class="legend-diamond"></span>Milestone</span>
+                </div>
+            </div>
+            <div class="roadmap-wrap">
+                <div class="roadmap" id="roadmap"></div>
+            </div>
+        </div>
+
+        <!-- ── Priorities tab ── -->
+        <div class="nav-content" id="navPriorities">
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <div class="chart-title">Value vs. Effort Matrix
+                        <span class="chart-subtitle">Bubble size = capacity demand (PD) · Color = status · Quadrants guide priority decisions</span>
+                    </div>
+                    <div class="chart-container tall"><canvas id="matrixChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Priority Ranking
+                    <span class="chart-subtitle">Score = Business Value ÷ Effort (pod weeks where sized), weighted by MoSCoW priority</span>
+                </div>
+                <div class="table-container">
+                    <table id="prioTable">
+                        <thead>
+                            <tr>
+                                <th class="sort-header" data-col="rank">#</th>
+                                <th class="sort-header" data-col="name">Initiative</th>
+                                <th class="sort-header" data-col="workstream">Pod</th>
+                                <th class="sort-header" data-col="priority">Priority</th>
+                                <th class="sort-header text-right" data-col="value">Value</th>
+                                <th class="sort-header text-right" data-col="effort">Effort</th>
+                                <th class="sort-header text-right" data-col="podWeeks">Pod Wks</th>
+                                <th class="sort-header text-right" data-col="capTotal">Demand (PD)</th>
+                                <th class="sort-header text-right" data-col="score">Score</th>
+                                <th class="sort-header" data-col="status">Status</th>
+                                <th class="sort-header" data-col="deps">Depends On</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prioBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Capacity tab ── -->
+        <div class="nav-content" id="navCapacity">
+            <div class="team-config" id="teamConfig"></div>
+            <div class="charts-grid">
+                <div class="chart-card full-width">
+                    <div class="chart-title">Pod Weeks vs. Quarter Budget
+                        <span class="chart-subtitle">Epic Size estimates spread over each initiative's months — 12 weeks per quarter, plan 8–10, the rest covers absences</span>
+                    </div>
+                    <div class="chart-container"><canvas id="podWeeksChart"></canvas></div>
+                </div>
+                <div class="chart-card full-width">
+                    <div class="chart-title">Demand vs. Pod Capacity per Quarter
+                        <span class="chart-subtitle">Stacked demand by pod (person-days) against total pod capacity</span>
+                    </div>
+                    <div class="chart-container tall"><canvas id="capacityChart"></canvas></div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Role Utilization per Quarter
+                    <span class="chart-subtitle">Demand ÷ capacity per role — red &gt; 100%, amber &gt; 85%</span>
+                </div>
+                <div class="table-container">
+                    <table id="utilTable">
+                        <thead><tr id="utilHead"></tr></thead>
+                        <tbody id="utilBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Items tab ── -->
+        <div class="nav-content" id="navItems">
+            <div class="rm-toolbar">
+                <button class="btn btn-primary" onclick="openEditor()">+ Add Item</button>
+                <span class="insights-count" id="itemsCount"></span>
+            </div>
+            <div class="table-container">
+                <table id="itemsTable">
+                    <thead>
+                        <tr>
+                            <th class="sort-header" data-col="name">Name</th>
+                            <th class="sort-header" data-col="workstream">Pod</th>
+                            <th class="sort-header" data-col="type">Type</th>
+                            <th class="sort-header" data-col="start">Start</th>
+                            <th class="sort-header" data-col="end">End</th>
+                            <th class="sort-header" data-col="status">Status</th>
+                            <th class="sort-header" data-col="priority">Priority</th>
+                            <th class="sort-header text-right" data-col="progress">Progress</th>
+                            <th>Depends On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── GitLab tab ── -->
+        <div class="nav-content" id="navGitlab">
+            <div class="gl-bar" id="glBar"></div>
+            <div class="gl-error" id="glError" style="display:none"></div>
+            <div class="rm-toolbar">
+                <input type="text" class="search-input" id="glSearch" placeholder="Search epics…" oninput="glFilterChanged()">
+                <div class="seg" id="glStateSeg">
+                    <button data-glstate="opened" class="active" onclick="glSetStateFilter('opened')">Open</button>
+                    <button data-glstate="closed" onclick="glSetStateFilter('closed')">Closed</button>
+                    <button data-glstate="all" onclick="glSetStateFilter('all')">All</button>
+                </div>
+                <label class="toggle-label"><input type="checkbox" id="glOnlyAssigned" onchange="glRenderTable()"> Only assigned</label>
+                <span class="insights-count" id="glCount" style="margin-left:auto"></span>
+            </div>
+            <div class="table-container" style="max-height:600px">
+                <table id="glTable">
+                    <thead>
+                        <tr>
+                            <th>Epic</th>
+                            <th>State</th>
+                            <th>Start</th>
+                            <th>Due</th>
+                            <th>Size</th>
+                            <th>Labels</th>
+                            <th>Issues</th>
+                            <th>Roadmap</th>
+                        </tr>
+                    </thead>
+                    <tbody id="glBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ── Export tab ── -->
+        <div class="nav-content" id="navExport">
+            <div class="export-section">
+                <h3>PowerPoint Export</h3>
+                <div class="hint">Generates a 16:9 deck from the current filtered view: roadmap timeline (native, editable shapes), priority ranking and capacity summary. Built for senior management presentations.</div>
+                <div class="export-controls">
+                    <button class="export-btn accent" onclick="exportPptx()">Export PPTX</button>
+                    <label class="toggle-label" style="display:flex;gap:0.3rem;align-items:center;font-size:0.8rem;">
+                        <input type="checkbox" id="pptIncludeTables" checked> Include priority &amp; capacity slides
+                    </label>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3>Excel Export</h3>
+                <div class="hint">Workbook with Roadmap (Gantt grid), Items and Capacity sheets. In monthly mode, month columns are grouped under quarters — collapse/expand via the +/− outline buttons in Excel for more or less detail.</div>
+                <div class="export-controls">
+                    <div class="radio-group">
+                        <label><input type="radio" name="xlsxGran" value="monthGrouped" checked> Months grouped under quarters</label>
+                        <label><input type="radio" name="xlsxGran" value="quarter"> Quarters only</label>
+                    </div>
+                    <button class="export-btn accent" onclick="exportXlsx()">Export XLSX</button>
+                    <button class="export-btn" onclick="exportItemsCsv()">Export CSV</button>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h3>Data Backup</h3>
+                <div class="hint">Roadmap data is stored locally in this browser. Use JSON export/import to back up, share or move between machines.</div>
+                <div class="export-controls">
+                    <button class="export-btn" onclick="exportJson()">Export JSON</button>
+                    <button class="export-btn" onclick="document.getElementById('jsonFile').click()">Import JSON</button>
+                    <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="importJson(event)">
+                    <button class="export-btn" onclick="resetSample()">Reset to sample data</button>
+                </div>
+            </div>
+
+            <div class="insights-count" id="exportCount"></div>
+            <div class="table-container">
+                <table id="exportTable">
+                    <thead id="exportHead"></thead>
+                    <tbody id="exportBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- ── Item editor modal ── -->
+    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeEditor()">
+        <div class="modal">
+            <h2 id="modalTitle">Add Item</h2>
+            <div class="form-grid">
+                <div class="form-field span2">
+                    <label>Name</label>
+                    <input type="text" id="fName" placeholder="Initiative or milestone name">
+                </div>
+                <div class="form-field">
+                    <label>Type</label>
+                    <select id="fType" onchange="onTypeChange()">
+                        <option value="epic">Initiative</option>
+                        <option value="milestone">Milestone</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Pod</label>
+                    <input type="text" id="fPod" list="wsList" placeholder="e.g. Intranet Experience">
+                    <datalist id="wsList"></datalist>
+                </div>
+                <div class="form-field">
+                    <label>Start (month)</label>
+                    <input type="month" id="fStart">
+                </div>
+                <div class="form-field" id="endField">
+                    <label>End (month)</label>
+                    <input type="month" id="fEnd">
+                </div>
+                <div class="form-field">
+                    <label>Status</label>
+                    <select id="fStatus">
+                        <option value="planned">Planned</option>
+                        <option value="ontrack">On Track</option>
+                        <option value="atrisk">At Risk</option>
+                        <option value="delayed">Delayed</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Priority (MoSCoW)</label>
+                    <select id="fPriority">
+                        <option value="must">Must</option>
+                        <option value="should">Should</option>
+                        <option value="could">Could</option>
+                    </select>
+                </div>
+                <div class="form-field" id="progressField">
+                    <label>Progress (%)</label>
+                    <input type="number" id="fProgress" min="0" max="100" step="5" value="0">
+                </div>
+                <div class="form-field" id="valueField">
+                    <label>Business Value (1–10)</label>
+                    <input type="number" id="fValue" min="1" max="10" value="5">
+                </div>
+                <div class="form-field" id="effortField">
+                    <label>Effort (1–10)</label>
+                    <input type="number" id="fEffort" min="1" max="10" value="5">
+                </div>
+                <div class="form-field" id="podWeeksField">
+                    <label>Epic Size (Pod Weeks)</label>
+                    <input type="number" id="fPodWeeks" min="0" step="0.5" placeholder="–">
+                    <span class="field-hint">Effort estimate, not duration. Overrides 1–10 effort in matrix &amp; score. Synced from the GitLab "Epic Size" label for linked items.</span>
+                </div>
+                <div class="form-field span2" id="capField">
+                    <label>Capacity Demand (person-days, total over duration)</label>
+                    <div class="cap-grid">
+                        <div class="form-field"><label>Dev</label><input type="number" id="fCapDev" min="0" value="0"></div>
+                        <div class="form-field"><label>BA</label><input type="number" id="fCapBa" min="0" value="0"></div>
+                        <div class="form-field"><label>Test</label><input type="number" id="fCapQa" min="0" value="0"></div>
+                        <div class="form-field"><label>SRE</label><input type="number" id="fCapSre" min="0" value="0"></div>
+                        <div class="form-field"><label>SM</label><input type="number" id="fCapSm" min="0" value="0"></div>
+                    </div>
+                </div>
+                <div class="form-field span2">
+                    <label>Depends On</label>
+                    <select id="fDeps" multiple></select>
+                    <span class="field-hint">Cmd/Ctrl-click for multiple. Dependencies are drawn as arrows on the roadmap; conflicts (successor starts before predecessor ends) turn red.</span>
+                </div>
+                <div class="form-field span2">
+                    <label>Description</label>
+                    <textarea id="fDescription" placeholder="One-liner for management: what & why"></textarea>
+                </div>
+                <div class="form-field span2" id="fGitlabField" style="display:none">
+                    <label>GitLab Epic</label>
+                    <div class="gl-info-box" id="fGitlabInfo"></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger left" id="deleteBtn" style="display:none" onclick="deleteItemFromModal()">Delete</button>
+                <button class="btn btn-secondary" onclick="closeEditor()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditor()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── GitLab settings modal ── -->
+    <div class="modal-overlay" id="glSettingsOverlay" onclick="if(event.target===this)glCloseSettings()">
+        <div class="modal" style="width:560px">
+            <h2>GitLab Connection</h2>
+            <div class="form-grid">
+                <div class="form-field span2">
+                    <label>Import config (GitHarmony backup JSON)</label>
+                    <div style="display:flex;gap:0.5rem;align-items:center">
+                        <button class="export-btn" onclick="document.getElementById('glBackupFile').click()">Load backup JSON…</button>
+                        <input type="file" id="glBackupFile" accept=".json" style="display:none" onchange="glImportBackup(event)">
+                        <span class="field-hint">Export in GitHarmony: Governance → Export Backup → "include access token". Fills the fields below.</span>
+                    </div>
+                </div>
+                <div class="form-field span2">
+                    <label>GitLab URL</label>
+                    <input type="text" id="glUrl" placeholder="https://gitlab.com">
+                </div>
+                <div class="form-field span2">
+                    <label>Access Token (scope: read_api)</label>
+                    <input type="password" id="glToken" placeholder="glpat-…" autocomplete="off">
+                    <span class="field-hint">Stored only in this browser (localStorage), kept separate from roadmap data — never included in JSON exports.</span>
+                </div>
+                <div class="form-field span2">
+                    <label>Group Path</label>
+                    <input type="text" id="glGroup" placeholder="my-group/sub-group">
+                    <span class="field-hint">Epics are fetched from this group incl. subgroups. Requires GitLab Premium/Ultimate.</span>
+                </div>
+                <div class="form-field span2" id="glTestResult" style="display:none"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-danger left" onclick="glClearAuth()">Disconnect</button>
+                <button class="btn btn-secondary" onclick="glTestConnection()">Test connection</button>
+                <button class="btn btn-secondary" onclick="glCloseSettings()">Cancel</button>
+                <button class="btn btn-primary" onclick="glSaveSettings()">Save &amp; Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── GitLab assign modal ── -->
+    <div class="modal-overlay" id="glAssignOverlay" onclick="if(event.target===this)glCloseAssign()">
+        <div class="modal" style="width:480px">
+            <h2 id="glAssignTitle">Add epic to roadmap</h2>
+            <div class="form-grid">
+                <div class="form-field span2">
+                    <label>Pod</label>
+                    <input type="text" id="gaPod" list="wsList" placeholder="e.g. Intranet Experience">
+                </div>
+                <div class="form-field">
+                    <label>Start (month)</label>
+                    <input type="month" id="gaStart">
+                </div>
+                <div class="form-field">
+                    <label>End (month)</label>
+                    <input type="month" id="gaEnd">
+                </div>
+                <div class="form-field">
+                    <label>Priority (MoSCoW)</label>
+                    <select id="gaPriority">
+                        <option value="must">Must</option>
+                        <option value="should" selected>Should</option>
+                        <option value="could">Could</option>
+                    </select>
+                </div>
+                <div class="form-field span2">
+                    <span class="field-hint" id="gaHint"></span>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="glCloseAssign()">Cancel</button>
+                <button class="btn btn-primary" onclick="glDoAssign()">Add to roadmap</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="rm-tooltip" id="tooltip"></div>
+
+    <script>
+        'use strict';
+
+        // ════════════════════════════════════════════════════════════
+        //  CONSTANTS & STATE
+        // ════════════════════════════════════════════════════════════
+        const STORAGE_KEY = 'roadmap-tool-v2';
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const STATUS_META = {
+            planned: { label: 'Planned',  color: '#B8B3A2', argb: 'FFB8B3A2', badge: 'badge-neutral' },
+            ontrack: { label: 'On Track', color: '#6F7A1A', argb: 'FF6F7A1A', badge: 'badge-success' },
+            atrisk:  { label: 'At Risk',  color: '#E4A911', argb: 'FFE4A911', badge: 'badge-warning' },
+            delayed: { label: 'Delayed',  color: '#BD000C', argb: 'FFBD000C', badge: 'badge-danger' },
+            done:    { label: 'Done',     color: '#404040', argb: 'FF404040', badge: 'badge-done' }
+        };
+        const PRIO_META = {
+            must:   { label: 'Must',   weight: 1.5, badge: 'badge-must' },
+            should: { label: 'Should', weight: 1.0, badge: 'badge-should' },
+            could:  { label: 'Could',  weight: 0.7, badge: 'badge-could' }
+        };
+        const ROLES = [
+            { key: 'dev', label: 'Developer' },
+            { key: 'ba',  label: 'BA (technical)' },
+            { key: 'qa',  label: 'Tester' },
+            { key: 'sre', label: 'SRE' },
+            { key: 'sm',  label: 'Scrum Master' }
+        ];
+
+        let state = null;          // { items, settings }
+        let charts = {};           // chart instances
+        let editingId = null;
+        let prioSort = { col: 'score', dir: 'desc' };
+        let itemsSort = { col: 'start', dir: 'asc' };
+
+        // ════════════════════════════════════════════════════════════
+        //  SAMPLE DATA (Group Technology pod book of work)
+        // ════════════════════════════════════════════════════════════
+        function sampleData() {
+            const Y = new Date().getFullYear();
+            const m = n => `${Y}-${String(n).padStart(2,'0')}`;
+            return {
+                settings: {
+                    year: Y,
+                    granularity: 'month',
+                    workdaysPerMonth: 18,
+                    team: { dev: 1.5, ba: 1, qa: 1, sre: 1, sm: 0.5 },
+                    podWeekBudget: { min: 8, max: 10 }
+                },
+                items: [
+                    { id: 'i01', name: 'Intranet Search Revamp', workstream: 'Intranet Experience', type: 'epic',
+                      start: m(1), end: m(5), status: 'ontrack', priority: 'must', progress: 65, value: 9, effort: 7,
+                      capacity: { dev: 80, ba: 25, qa: 30, sre: 20, sm: 14 }, dependsOn: [],
+                      description: 'New search stack with semantic ranking across intranet content.' },
+                    { id: 'i02', name: 'Personalized News Feed', workstream: 'Intranet Experience', type: 'epic',
+                      start: m(6), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 8, effort: 6,
+                      capacity: { dev: 60, ba: 20, qa: 25, sre: 12, sm: 10 }, dependsOn: ['i01'],
+                      description: 'Role- and location-based targeting of news on the intranet home.' },
+                    { id: 'i03', name: 'Content Migration Wave 3', workstream: 'Intranet Experience', type: 'epic',
+                      start: m(3), end: m(8), status: 'atrisk', priority: 'must', progress: 35, value: 7, effort: 6,
+                      capacity: { dev: 35, ba: 35, qa: 25, sre: 8, sm: 10 }, dependsOn: [],
+                      description: 'Migrate remaining legacy intranet sites to the new platform.' },
+                    { id: 'i04', name: 'Email Distribution Platform Upgrade', workstream: 'Comms Channels & Solutions', type: 'epic',
+                      start: m(1), end: m(4), status: 'done', priority: 'must', progress: 100, value: 8, effort: 5,
+                      capacity: { dev: 40, ba: 15, qa: 20, sre: 15, sm: 8 }, dependsOn: [],
+                      description: 'Upgrade mass-mail platform; foundation for targeted notifications.' },
+                    { id: 'i05', name: 'Targeted Notifications Service', workstream: 'Comms Channels & Solutions', type: 'epic',
+                      start: m(5), end: m(9), status: 'ontrack', priority: 'must', progress: 30, value: 9, effort: 7,
+                      capacity: { dev: 70, ba: 25, qa: 30, sre: 20, sm: 12 }, dependsOn: ['i04'],
+                      description: 'Audience-targeted push/email notifications across channels.' },
+                    { id: 'i06', name: 'Channel Consolidation', workstream: 'Comms Channels & Solutions', type: 'epic',
+                      start: m(8), end: m(12), status: 'planned', priority: 'should', progress: 0, value: 6, effort: 5,
+                      capacity: { dev: 35, ba: 20, qa: 18, sre: 12, sm: 8 }, dependsOn: ['i05'],
+                      description: 'Retire redundant comms channels, route through notification service.' },
+                    { id: 'i07', name: 'Engagement Analytics Dashboard', workstream: 'Comms Measurements & Insights', type: 'epic',
+                      start: m(2), end: m(6), status: 'ontrack', priority: 'should', progress: 55, value: 8, effort: 5,
+                      capacity: { dev: 45, ba: 25, qa: 20, sre: 10, sm: 10 }, dependsOn: [],
+                      description: 'Self-service dashboard for reach and engagement across channels.' },
+                    { id: 'i08', name: 'Campaign Attribution Model', workstream: 'Comms Measurements & Insights', type: 'epic',
+                      start: m(7), end: m(10), status: 'planned', priority: 'could', progress: 0, value: 6, effort: 6,
+                      capacity: { dev: 30, ba: 25, qa: 15, sre: 5, sm: 6 }, dependsOn: ['i07'],
+                      description: 'Attribute engagement uplift to campaigns and channels.' },
+                    { id: 'i09', name: 'Comms Data Quality Framework', workstream: 'Comms Measurements & Insights', type: 'epic',
+                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 5, effort: 4,
+                      capacity: { dev: 22, ba: 20, qa: 15, sre: 5, sm: 5 }, dependsOn: ['i07'],
+                      description: 'Rule-based quality checks on tracking and audience data.' },
+                    { id: 'i10', name: 'Speaker Brief Portal MVP', workstream: 'Speaker Brief', type: 'epic',
+                      start: m(2), end: m(6), status: 'atrisk', priority: 'must', progress: 45, value: 8, effort: 6,
+                      capacity: { dev: 55, ba: 30, qa: 25, sre: 10, sm: 12 }, dependsOn: [],
+                      description: 'Central portal for creating and approving executive speaker briefs.' },
+                    { id: 'i11', name: 'Brief Workflow Automation', workstream: 'Speaker Brief', type: 'epic',
+                      start: m(6), end: m(9), status: 'planned', priority: 'should', progress: 0, value: 7, effort: 4,
+                      capacity: { dev: 30, ba: 20, qa: 15, sre: 5, sm: 8 }, dependsOn: ['i10'],
+                      description: 'Review/approval workflow with deadlines and notifications.' },
+                    { id: 'i12', name: 'AI Brief Drafting Assistant', workstream: 'Speaker Brief', type: 'epic',
+                      start: m(9), end: m(12), status: 'planned', priority: 'could', progress: 0, value: 7, effort: 5,
+                      capacity: { dev: 35, ba: 15, qa: 15, sre: 8, sm: 6 }, dependsOn: ['i11'],
+                      description: 'LLM-assisted first drafts from source material and past briefs.' },
+                    { id: 'm01', name: 'Search Go-Live', workstream: 'Intranet Experience', type: 'milestone',
+                      start: m(5), end: m(5), status: 'ontrack', priority: 'must', progress: 0, value: 9, effort: 1,
+                      capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i01'],
+                      description: 'New intranet search live for all users.' },
+                    { id: 'm02', name: 'Legacy Newsletter Decommissioned', workstream: 'Comms Channels & Solutions', type: 'milestone',
+                      start: m(10), end: m(10), status: 'planned', priority: 'should', progress: 0, value: 7, effort: 1,
+                      capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i05'],
+                      description: 'Last legacy newsletter switched off.' },
+                    { id: 'm03', name: 'Speaker Brief Go-Live', workstream: 'Speaker Brief', type: 'milestone',
+                      start: m(6), end: m(6), status: 'planned', priority: 'must', progress: 0, value: 8, effort: 1,
+                      capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: ['i10'],
+                      description: 'Portal MVP live for executive comms team.' },
+                    { id: 'm04', name: 'Year-End Change Freeze', workstream: 'Comms Channels & Solutions', type: 'milestone',
+                      start: m(12), end: m(12), status: 'planned', priority: 'must', progress: 0, value: 5, effort: 1,
+                      capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 }, dependsOn: [],
+                      description: 'No production changes from mid-December.' }
+                ]
+            };
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  PERSISTENCE
+        // ════════════════════════════════════════════════════════════
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    state = JSON.parse(raw);
+                    // migration: quarterly pod-week planning budget (12 weeks/quarter, 8–10 plannable)
+                    if (!state.settings.podWeekBudget) state.settings.podWeekBudget = { min: 8, max: 10 };
+                    return;
+                }
+            } catch (e) { console.warn('Failed to load saved data:', e); }
+            state = sampleData();
+        }
+        function saveState() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.warn(e); }
+            setStatus('Saved ' + new Date().toLocaleTimeString('en-GB'));
+        }
+        function setStatus(txt) { document.getElementById('statusText').textContent = txt; }
+
+        // ════════════════════════════════════════════════════════════
+        //  HELPERS
+        // ════════════════════════════════════════════════════════════
+        function fmt(n) { return n == null ? '-' : Number(n).toLocaleString('en-US'); }
+        function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function ymToIdx(ym) { // month index relative to displayed year (0–11, may be out of range)
+            const [y, m] = ym.split('-').map(Number);
+            return (y - state.settings.year) * 12 + (m - 1);
+        }
+        function idxToLabel(i) { return MONTHS[i] + ' ' + state.settings.year; }
+        function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+        function byId(id) { return state.items.find(i => i.id === id); }
+        function capTotal(it) { return ROLES.reduce((s, r) => s + (Number(it.capacity?.[r.key]) || 0), 0); }
+        // "Epic Size" label → pod weeks (effort estimate, not duration).
+        // Matches "2 Pod Weeks", "Epic Size::3 Pod Weeks", "1 pod-week", "0.5 Pod Weeks" …
+        function parsePodWeeks(labels) {
+            for (const l of labels || []) {
+                const m = /(\d+(?:[.,]\d+)?)\s*pod[\s_-]*weeks?/i.exec(l);
+                if (m) return parseFloat(m[1].replace(',', '.'));
+            }
+            return null;
+        }
+        // Effective effort: pod weeks (from GitLab Epic Size or manual) win over the generic 1–10 scale
+        function effEffort(it) { return it.podWeeks > 0 ? it.podWeeks : it.effort; }
+        function score(it) {
+            const w = PRIO_META[it.priority]?.weight ?? 1;
+            return Math.round((it.value / Math.max(1, effEffort(it))) * w * 100) / 100;
+        }
+        // Pod-week demand per quarter, spread evenly over an item's months in the displayed year
+        function podWeeksModel(items) {
+            const byWs = {}, totals = [0, 0, 0, 0];
+            items.forEach(it => {
+                if (it.type !== 'epic' || !(it.podWeeks > 0)) return;
+                const s = ymToIdx(it.start), e = ymToIdx(it.end), dur = e - s + 1;
+                if (dur <= 0) return;
+                if (!byWs[it.workstream]) byWs[it.workstream] = [0, 0, 0, 0];
+                for (let mi = Math.max(0, s); mi <= Math.min(11, e); mi++) {
+                    const qi = Math.floor(mi / 3);
+                    byWs[it.workstream][qi] += it.podWeeks / dur;
+                    totals[qi] += it.podWeeks / dur;
+                }
+            });
+            return { byWs, totals };
+        }
+        function depConflict(it) {
+            return (it.dependsOn || []).some(d => { const p = byId(d); return p && it.start < p.end && p.id !== it.id; });
+        }
+        async function downloadBlob(blob, filename) {
+            // Preferred: File System Access API — real "Save as" dialog with the
+            // correct filename and extension. Chrome ignores the anchor download
+            // attribute on null-origin pages (file://), so anchor downloads arrive
+            // as extension-less UUIDs there.
+            if (window.showSaveFilePicker) {
+                try {
+                    const ext = filename.slice(filename.lastIndexOf('.'));
+                    const mime = (blob.type || '').split(';')[0] || 'application/octet-stream';
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: ext.slice(1).toUpperCase() + ' file',
+                            accept: { [mime]: [ext] }
+                        }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    return;
+                } catch (e) {
+                    if (e.name === 'AbortError') return; // user cancelled the dialog
+                    console.warn('Save dialog failed, falling back to anchor download:', e);
+                }
+            }
+            // Fallback: anchor download (data URL on file://, blob URL otherwise)
+            if (location.protocol === 'file:') {
+                const reader = new FileReader();
+                reader.onload = () => triggerDownload(reader.result, filename, false);
+                reader.readAsDataURL(blob);
+            } else {
+                triggerDownload(URL.createObjectURL(blob), filename, true);
+            }
+        }
+        function triggerDownload(href, filename, revoke) {
+            const a = document.createElement('a');
+            a.href = href;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            // Safari aborts the download if the object URL is revoked synchronously
+            setTimeout(() => { if (revoke) URL.revokeObjectURL(href); a.remove(); }, 10000);
+        }
+        function stamp() { return new Date().toISOString().slice(0, 10); }
+
+        // Items visible in the displayed year and matching active filters
+        function filteredItems() {
+            const ws = document.getElementById('fltPod').value;
+            const st = document.getElementById('fltStatus').value;
+            const pr = document.getElementById('fltPriority').value;
+            const ty = document.getElementById('fltType').value;
+            const q = document.getElementById('fltSearch').value.trim().toLowerCase();
+            const y = state.settings.year;
+            const yStart = `${y}-01`, yEnd = `${y}-12`;
+            return state.items.filter(it =>
+                it.start <= yEnd && it.end >= yStart &&
+                (!ws || it.workstream === ws) &&
+                (!st || it.status === st) &&
+                (!pr || it.priority === pr) &&
+                (!ty || it.type === ty) &&
+                (!q || (it.name + ' ' + (it.description || '') + ' ' + it.workstream).toLowerCase().includes(q))
+            );
+        }
+        function workstreams(items) {
+            return [...new Set((items || state.items).map(i => i.workstream))];
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  FILTERS & KPIs
+        // ════════════════════════════════════════════════════════════
+        function refreshFilterOptions() {
+            const sel = document.getElementById('fltPod');
+            const cur = sel.value;
+            sel.innerHTML = '<option value="">All Pods</option>' +
+                workstreams().map(w => `<option value="${esc(w)}"${w === cur ? ' selected' : ''}>${esc(w)}</option>`).join('');
+            document.getElementById('wsList').innerHTML = workstreams().map(w => `<option value="${esc(w)}">`).join('');
+        }
+        function clearFilters() {
+            ['fltPod','fltStatus','fltPriority','fltType'].forEach(id => document.getElementById(id).value = '');
+            document.getElementById('fltSearch').value = '';
+            applyFilters();
+        }
+        function applyFilters() { renderAll(); }
+
+        function renderKpis() {
+            const items = filteredItems();
+            const epics = items.filter(i => i.type === 'epic');
+            const ms = items.filter(i => i.type === 'milestone');
+            const atRisk = epics.filter(i => i.status === 'atrisk' || i.status === 'delayed').length;
+            const done = epics.filter(i => i.status === 'done').length;
+            const avgProg = epics.length ? Math.round(epics.reduce((s, i) => s + (i.progress || 0), 0) / epics.length) : 0;
+            const conflicts = items.filter(depConflict).length;
+            // Peak quarter utilization across roles
+            const cap = capacityModel(items);
+            let peak = 0, peakLabel = '–';
+            cap.quarters.forEach((q, qi) => {
+                ROLES.forEach(r => {
+                    const u = cap.supply[r.key] > 0 ? cap.demandByRole[r.key][qi] / cap.supply[r.key] : 0;
+                    if (u > peak) { peak = u; peakLabel = `${q} · ${r.label}`; }
+                });
+            });
+            // Pod-week planning: worst quarter vs the 8–10 budget band
+            const pw = podWeeksModel(items);
+            const budget = state.settings.podWeekBudget;
+            const pwPeak = Math.max(...pw.totals);
+            const pwYear = Math.round(pw.totals.reduce((a, b) => a + b, 0) * 10) / 10;
+            const pwCls = pwPeak > budget.max ? 'danger' : pwPeak >= budget.min ? 'warning' : 'success';
+            const pwSub = pwPeak > budget.max ? `peak ${Math.round(pwPeak * 10) / 10} PW/qtr — over budget`
+                : pwPeak >= budget.min ? `peak ${Math.round(pwPeak * 10) / 10} PW/qtr — band full`
+                : `budget ${budget.min}–${budget.max} PW per quarter`;
+            const kpis = [
+                { cls: 'highlight', label: 'Initiatives', value: epics.length, sub: `${ms.length} milestones` },
+                { cls: pwCls, label: 'Pod Weeks (Year)', value: pwYear, sub: pwSub },
+                { cls: 'success', label: 'Avg. Progress', value: avgProg + '%', sub: `${done} done` },
+                { cls: atRisk ? 'danger' : 'success', label: 'At Risk / Delayed', value: atRisk, sub: atRisk ? 'needs management attention' : 'all on track' },
+                { cls: conflicts ? 'danger' : 'info', label: 'Dependency Conflicts', value: conflicts, sub: conflicts ? 'successor starts before predecessor ends' : 'no conflicts' },
+                { cls: peak > 1 ? 'danger' : peak > 0.85 ? 'warning' : 'success', label: 'Peak Utilization', value: Math.round(peak * 100) + '%', sub: peakLabel },
+                { cls: 'info', label: 'Total Demand', value: fmt(items.reduce((s, i) => s + capTotal(i), 0)) + ' PD', sub: `pod capacity ${fmt(cap.totalSupplyYear)} PD / year` }
+            ];
+            document.getElementById('kpiGrid').innerHTML = kpis.map(k => `
+                <div class="kpi-card ${k.cls}">
+                    <div class="kpi-label">${k.label}</div>
+                    <div class="kpi-value">${k.value}</div>
+                    <div class="kpi-subtitle">${k.sub}</div>
+                </div>`).join('');
+            document.getElementById('filterCount').textContent = `${items.length} of ${state.items.length} items`;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  ROADMAP TIMELINE
+        // ════════════════════════════════════════════════════════════
+        function setGranularity(g) {
+            state.settings.granularity = g;
+            saveState();
+            document.querySelectorAll('#granularitySeg button').forEach(b =>
+                b.classList.toggle('active', b.dataset.gran === g));
+            renderRoadmap();
+        }
+
+        // Greedy row packing: items into the fewest rows without horizontal overlap
+        function packRows(items) {
+            const sorted = [...items].sort((a, b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+            const rows = []; // last occupied end index per row
+            sorted.forEach(it => {
+                const s = clamp(ymToIdx(it.start), 0, 11);
+                const e = clamp(ymToIdx(it.end), 0, 11);
+                let placed = false;
+                for (let r = 0; r < rows.length; r++) {
+                    if (s > rows[r].lastEnd) { rows[r].items.push(it); rows[r].lastEnd = e; it._row = r; placed = true; break; }
+                }
+                if (!placed) { rows.push({ lastEnd: e, items: [it] }); it._row = rows.length - 1; }
+            });
+            return rows.length || 1;
+        }
+
+        function renderRoadmap() {
+            const el = document.getElementById('roadmap');
+            const items = filteredItems();
+            const gran = state.settings.granularity;
+            const showMonths = gran === 'month';
+            const lanes = workstreams(items);
+
+            let html = `<div class="rm-header">
+                <div class="rm-label-col"><div class="hd">Pod</div></div>
+                <div class="rm-grid-col">
+                    <div class="rm-quarters">${[1,2,3,4].map(q => `<div class="cell">Q${q} ${state.settings.year}</div>`).join('')}</div>
+                    ${showMonths ? `<div class="rm-months">${MONTHS.map(mn => `<div class="cell">${mn}</div>`).join('')}</div>` : ''}
+                </div>
+            </div><div class="rm-body" id="rmBody">`;
+
+            const ROW_H = 34, PAD = 8, MS_EXTRA = 16;
+            lanes.forEach(ws => {
+                const laneItems = items.filter(i => i.workstream === ws);
+                const bars = laneItems.filter(i => i.type === 'epic');
+                const miles = laneItems.filter(i => i.type === 'milestone');
+                const nRows = packRows(bars);
+                const msRow = miles.length ? 1 : 0;
+                const h = PAD * 2 + nRows * ROW_H + msRow * (ROW_H + MS_EXTRA) - 8;
+
+                let track = `<div class="rm-gridlines">${MONTHS.map((_, i) =>
+                    `<div class="gl${(i + 1) % 3 === 0 ? ' q' : ''}"></div>`).join('')}</div>`;
+
+                bars.forEach(it => {
+                    const s = clamp(ymToIdx(it.start), 0, 11);
+                    const e = clamp(ymToIdx(it.end), 0, 11);
+                    const left = s / 12 * 100, width = (e - s + 1) / 12 * 100;
+                    const top = PAD + it._row * ROW_H;
+                    const meta = STATUS_META[it.status];
+                    track += `<div class="rm-bar" data-id="${it.id}"
+                        style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background:${meta.color};margin-left:2px;"
+                        onclick="openEditor('${it.id}')">
+                        <span class="bar-name">${esc(it.name)}</span>
+                        ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
+                        <span class="bar-progress" style="width:${it.progress || 0}%"></span>
+                    </div>`;
+                });
+
+                const msTop = PAD + nRows * ROW_H + 8;
+                miles.sort((a, b) => a.start.localeCompare(b.start)).forEach((it, mi) => {
+                    const s = clamp(ymToIdx(it.start), 0, 11);
+                    const center = (s + 0.5) / 12 * 100;
+                    // labels for late-year milestones go left of the diamond to avoid clipping;
+                    // alternate above/below the diamond row so neighboring labels don't collide
+                    const labelPos = s >= 10
+                        ? `right:calc(${100 - center}% + 12px);text-align:right;`
+                        : `left:calc(${center}% + 12px);`;
+                    const labelTop = msTop - 2 + (mi % 2 ? 17 : 0);
+                    track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}" data-id="${it.id}"
+                        style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openEditor('${it.id}')"></div>
+                        <div class="rm-ms-label" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
+                        onclick="openEditor('${it.id}')">${esc(it.name)}</div>`;
+                });
+
+                html += `<div class="rm-lane" style="min-height:${h}px">
+                    <div class="rm-lane-label">
+                        <div class="ws-name">${esc(ws)}</div>
+                        <div class="ws-meta">${bars.length} initiative${bars.length === 1 ? '' : 's'}${miles.length ? ` · ${miles.length} milestone${miles.length === 1 ? '' : 's'}` : ''}</div>
+                    </div>
+                    <div class="rm-lane-track" data-ws="${esc(ws)}" style="min-height:${h}px">${track}</div>
+                </div>`;
+            });
+
+            if (!lanes.length) {
+                html += `<div style="padding:3rem;text-align:center;color:var(--medium-gray);font-size:0.85rem;">
+                    No items match the current filters for ${state.settings.year}.</div>`;
+            }
+            html += '</div>';
+            el.innerHTML = html;
+
+            drawTodayLine();
+            if (document.getElementById('showDeps').checked) requestAnimationFrame(drawDependencies);
+            attachTooltips();
+        }
+
+        function drawTodayLine() {
+            const body = document.getElementById('rmBody');
+            if (!body) return;
+            const now = new Date();
+            if (now.getFullYear() !== state.settings.year) return;
+            const frac = (now.getMonth() + (now.getDate() - 1) / 31) / 12;
+            const tracks = body.querySelectorAll('.rm-lane-track');
+            if (!tracks.length) return;
+            // position the line across the whole body, offset by the label column
+            const line = document.createElement('div');
+            line.className = 'rm-today';
+            line.style.left = `calc(200px + (100% - 200px) * ${frac})`;
+            line.innerHTML = '<span class="chip">Today</span>';
+            body.appendChild(line);
+        }
+
+        function drawDependencies() {
+            const body = document.getElementById('rmBody');
+            if (!body) return;
+            body.querySelectorAll('.dep-svg').forEach(s => s.remove());
+            const items = filteredItems();
+            const bodyRect = body.getBoundingClientRect();
+            const svgNS = 'http://www.w3.org/2000/svg';
+            const svg = document.createElementNS(svgNS, 'svg');
+            svg.setAttribute('class', 'dep-svg');
+            svg.setAttribute('width', body.scrollWidth);
+            svg.setAttribute('height', body.scrollHeight);
+            svg.innerHTML = `<defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#7A7870"/></marker>
+                <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#BD000C"/></marker>
+            </defs>`;
+            const pos = id => {
+                const node = body.querySelector(`[data-id="${id}"]`);
+                if (!node) return null;
+                const r = node.getBoundingClientRect();
+                return {
+                    left: r.left - bodyRect.left, right: r.right - bodyRect.left,
+                    midY: r.top - bodyRect.top + r.height / 2
+                };
+            };
+            items.forEach(it => {
+                (it.dependsOn || []).forEach(depId => {
+                    const from = pos(depId), to = pos(it.id);
+                    if (!from || !to) return;
+                    const conflict = (() => { const p = byId(depId); return p && it.start < p.end; })();
+                    const color = conflict ? '#BD000C' : '#7A7870';
+                    const x1 = from.right, y1 = from.midY, x2 = to.left - 3, y2 = to.midY;
+                    const dx = Math.max(24, Math.abs(x2 - x1) * 0.4);
+                    const path = document.createElementNS(svgNS, 'path');
+                    path.setAttribute('d', `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke', color);
+                    path.setAttribute('stroke-width', conflict ? '2' : '1.5');
+                    if (conflict) path.setAttribute('stroke-dasharray', '5 3');
+                    path.setAttribute('marker-end', conflict ? 'url(#arrowRed)' : 'url(#arrow)');
+                    path.setAttribute('opacity', '0.8');
+                    svg.appendChild(path);
+                });
+            });
+            body.appendChild(svg);
+        }
+
+        function attachTooltips() {
+            const tt = document.getElementById('tooltip');
+            document.querySelectorAll('.rm-bar, .rm-milestone, .rm-ms-label').forEach(node => {
+                node.addEventListener('mousemove', e => {
+                    const it = byId(node.dataset.id || node.previousElementSibling?.dataset?.id);
+                    if (!it) return;
+                    const meta = STATUS_META[it.status];
+                    const deps = (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ');
+                    tt.innerHTML = `<div class="tt-title">${esc(it.name)}</div>
+                        <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}</div>
+                        <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
+                        ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : `Effort <b>${it.effort}</b>`} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
+                        ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
+                        ${it.gitlab ? `<div class="tt-row">GitLab: <b>${(it.gitlab.issues || []).filter(i => i.state === 'closed').length}/${(it.gitlab.issues || []).length} issues closed</b>${it.gitlab.missing ? ' · <b style="color:var(--danger)">epic missing</b>' : ''}</div>` : ''}
+                        ${it.description ? `<div class="tt-row" style="margin-top:0.25rem">${esc(it.description)}</div>` : ''}`;
+                    tt.style.display = 'block';
+                    const x = Math.min(e.clientX + 14, window.innerWidth - 340);
+                    tt.style.left = x + 'px';
+                    tt.style.top = (e.clientY + 14) + 'px';
+                });
+                node.addEventListener('mouseleave', () => tt.style.display = 'none');
+            });
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  PRIORITIES (matrix + ranking)
+        // ════════════════════════════════════════════════════════════
+        const matrixLabelPlugin = {
+            id: 'matrixLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea: area } = chart;
+                ctx.save();
+                ctx.font = '600 10px -apple-system, "Segoe UI", sans-serif';
+                const LH = 13; // label line height used for collision boxes
+                const placed = [];
+                const collides = r => placed.some(p =>
+                    r.x < p.x + p.w + 4 && r.x + r.w + 4 > p.x && r.y < p.y + p.h && r.y + r.h > p.y);
+                // bubbles are obstacles too — labels must not sit on top of other bubbles
+                chart.data.datasets.forEach((ds, di) => {
+                    chart.getDatasetMeta(di).data.forEach(pt => {
+                        const r = pt.options.radius;
+                        placed.push({ x: pt.x - r, y: pt.y - r, w: r * 2, h: r * 2 });
+                    });
+                });
+                chart.data.datasets.forEach((ds, di) => {
+                    chart.getDatasetMeta(di).data.forEach((pt, i) => {
+                        const raw = ds.data[i];
+                        if (!raw?.label) return;
+                        const w = ctx.measureText(raw.label).width;
+                        const rOff = pt.options.radius + 4;
+                        // candidates: right of bubble, left of bubble, then both shifted up/down row by row
+                        const candidates = [];
+                        for (let step = 0; step <= 8; step++) {
+                            (step === 0 ? [0] : [step * LH, -step * LH]).forEach(dy => {
+                                candidates.push({ x: pt.x + rOff, y: pt.y + 3 + dy });
+                                candidates.push({ x: pt.x - rOff - w, y: pt.y + 3 + dy });
+                            });
+                        }
+                        const pos = candidates.find(c =>
+                            c.x >= area.left && c.x + w <= area.right &&
+                            c.y - 10 >= area.top && c.y + 3 <= area.bottom &&
+                            !collides({ x: c.x, y: c.y - 10, w, h: LH })
+                        ) || candidates[0];
+                        placed.push({ x: pos.x, y: pos.y - 10, w, h: LH });
+                        // leader line when the label had to move away from its bubble
+                        if (Math.abs(pos.y - 3 - pt.y) > 1) {
+                            const onRight = pos.x > pt.x;
+                            ctx.strokeStyle = '#CCCABC';
+                            ctx.lineWidth = 1;
+                            ctx.beginPath();
+                            ctx.moveTo(pt.x, pt.y + (pos.y - 3 > pt.y ? pt.options.radius : -pt.options.radius));
+                            ctx.lineTo(onRight ? pos.x - 2 : pos.x + w + 2, pos.y - 3);
+                            ctx.stroke();
+                        }
+                        ctx.fillStyle = '#404040';
+                        ctx.fillText(raw.label, pos.x, pos.y);
+                    });
+                });
+                ctx.restore();
+            }
+        };
+        const quadrantPlugin = {
+            id: 'quadrants',
+            beforeDatasetsDraw(chart) {
+                const { ctx, chartArea: a, scales: { x, y } } = chart;
+                const mx = x.getPixelForValue(5.5), my = y.getPixelForValue(5.5);
+                ctx.save();
+                ctx.strokeStyle = '#CCCABC'; ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(mx, a.top); ctx.lineTo(mx, a.bottom);
+                ctx.moveTo(a.left, my); ctx.lineTo(a.right, my); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.font = '600 11px -apple-system, "Segoe UI", sans-serif';
+                ctx.fillStyle = '#B8B3A2';
+                ctx.fillText('QUICK WINS', a.left + 8, a.top + 16);
+                ctx.fillText('STRATEGIC BETS', mx + 8, a.top + 16);
+                ctx.fillText('FILL-INS', a.left + 8, my + 16);
+                ctx.fillText('RECONSIDER', mx + 8, my + 16);
+                ctx.restore();
+            }
+        };
+
+        function renderMatrix() {
+            const epics = filteredItems().filter(i => i.type === 'epic');
+            const ctx = document.getElementById('matrixChart');
+            charts.matrix?.destroy();
+            charts.matrix = new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        data: epics.map(it => ({
+                            x: effEffort(it), y: it.value,
+                            r: clamp(Math.sqrt(capTotal(it)) * 1.6, 6, 26),
+                            label: it.name, id: it.id
+                        })),
+                        backgroundColor: epics.map(it => STATUS_META[it.status].color + 'CC'),
+                        borderColor: epics.map(it => STATUS_META[it.status].color),
+                        borderWidth: 1.5
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    onClick(e, els) { if (els.length) openEditor(epics[els[0].index].id); },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label(c) {
+                            const it = epics[c.dataIndex];
+                            const eff = it.podWeeks > 0 ? `${it.podWeeks} pod weeks` : `effort ${it.effort}`;
+                            return `${it.name}: value ${it.value}, ${eff}, ${capTotal(it)} PD`;
+                        } } }
+                    },
+                    scales: {
+                        x: { min: 0, max: Math.max(11, ...epics.map(it => effEffort(it) + 1)), title: { display: true, text: 'Effort → (pod weeks where sized)', font: { size: 11 } }, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } } },
+                        y: { min: 0, max: 11, title: { display: true, text: 'Business Value →', font: { size: 11 } }, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } } }
+                    }
+                },
+                plugins: [quadrantPlugin, matrixLabelPlugin]
+            });
+            renderPrioTable();
+        }
+
+        function prioRows() {
+            return filteredItems().filter(i => i.type === 'epic').map(it => ({
+                id: it.id, name: it.name, workstream: it.workstream, priority: it.priority,
+                value: it.value, effort: it.effort, podWeeks: it.podWeeks ?? 0,
+                capTotal: capTotal(it), score: score(it),
+                status: it.status, deps: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ')
+            }));
+        }
+
+        function renderPrioTable() {
+            let rows = prioRows();
+            const { col, dir } = prioSort;
+            rows.sort((a, b) => {
+                const va = a[col], vb = b[col];
+                const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+                return dir === 'asc' ? c : -c;
+            });
+            document.getElementById('prioBody').innerHTML = rows.map((r, i) => `
+                <tr style="cursor:pointer" onclick="openEditor('${r.id}')">
+                    <td>${i + 1}</td>
+                    <td><b>${esc(r.name)}</b></td>
+                    <td>${esc(r.workstream)}</td>
+                    <td><span class="badge ${PRIO_META[r.priority].badge}">${PRIO_META[r.priority].label}</span></td>
+                    <td class="text-right">${r.value}</td>
+                    <td class="text-right">${r.podWeeks ? `<span style="color:var(--light-gray)">${r.effort}</span>` : r.effort}</td>
+                    <td class="text-right">${r.podWeeks ? `<b>${r.podWeeks}</b>` : '–'}</td>
+                    <td class="text-right">${fmt(r.capTotal)}</td>
+                    <td class="text-right"><b>${r.score.toFixed(2)}</b></td>
+                    <td><span class="badge ${STATUS_META[r.status].badge}">${STATUS_META[r.status].label}</span></td>
+                    <td style="font-size:0.7rem;color:var(--medium-gray)">${esc(r.deps) || '–'}</td>
+                </tr>`).join('');
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  CAPACITY
+        // ════════════════════════════════════════════════════════════
+        // Demand spread evenly across an item's months (within displayed year)
+        function capacityModel(items) {
+            const y = state.settings.year;
+            const wd = state.settings.workdaysPerMonth;
+            const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+            const demandByRole = {}, demandByWs = {};
+            ROLES.forEach(r => demandByRole[r.key] = [0, 0, 0, 0]);
+            items.forEach(it => {
+                if (it.type !== 'epic') return;
+                const sAbs = ymToIdx(it.start), eAbs = ymToIdx(it.end);
+                const dur = eAbs - sAbs + 1;
+                if (dur <= 0) return;
+                if (!demandByWs[it.workstream]) demandByWs[it.workstream] = [0, 0, 0, 0];
+                for (let mi = Math.max(0, sAbs); mi <= Math.min(11, eAbs); mi++) {
+                    const qi = Math.floor(mi / 3);
+                    ROLES.forEach(r => {
+                        const pd = (Number(it.capacity?.[r.key]) || 0) / dur;
+                        demandByRole[r.key][qi] += pd;
+                        demandByWs[it.workstream][qi] += pd;
+                    });
+                }
+            });
+            const supply = {};
+            ROLES.forEach(r => supply[r.key] = (state.settings.team[r.key] || 0) * wd * 3);
+            const totalSupplyQ = ROLES.reduce((s, r) => s + supply[r.key], 0);
+            return { quarters, demandByRole, demandByWs, supply, totalSupplyQ, totalSupplyYear: totalSupplyQ * 4 };
+        }
+
+        const WS_COLORS = ['#AF8626', '#00759E', '#879420', '#4B2D58', '#9F8865', '#2E476B', '#469A6C', '#AD3E4A'];
+
+        function renderPodWeeksChart(items) {
+            const pw = podWeeksModel(items);
+            const budget = state.settings.podWeekBudget;
+            const ctx = document.getElementById('podWeeksChart');
+            charts.podWeeks?.destroy();
+            const wsKeys = Object.keys(pw.byWs);
+            charts.podWeeks = new Chart(ctx, {
+                data: {
+                    labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                    datasets: [
+                        ...wsKeys.map((ws, i) => ({
+                            type: 'bar', label: ws, data: pw.byWs[ws].map(v => Math.round(v * 10) / 10),
+                            backgroundColor: WS_COLORS[i % WS_COLORS.length] + 'D9', stacked: true
+                        })),
+                        { type: 'line', label: `Budget max (${budget.max} PW)`, data: [0, 1, 2, 3].map(() => budget.max),
+                          borderColor: '#E60000', borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false, stack: 'bmax' },
+                        { type: 'line', label: `Budget min (${budget.min} PW)`, data: [0, 1, 2, 3].map(() => budget.min),
+                          borderColor: '#7A7870', borderWidth: 1.5, borderDash: [3, 3], pointRadius: 0, fill: false, stack: 'bmin' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12 } } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: { stacked: true, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } },
+                             title: { display: true, text: 'Pod weeks', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function renderCapacity() {
+            renderTeamConfig();
+            const items = filteredItems();
+            renderPodWeeksChart(items);
+            const cap = capacityModel(items);
+            const ctx = document.getElementById('capacityChart');
+            charts.capacity?.destroy();
+            const wsKeys = Object.keys(cap.demandByWs);
+            charts.capacity = new Chart(ctx, {
+                data: {
+                    labels: cap.quarters,
+                    datasets: [
+                        ...wsKeys.map((ws, i) => ({
+                            type: 'bar', label: ws, data: cap.demandByWs[ws].map(v => Math.round(v)),
+                            backgroundColor: WS_COLORS[i % WS_COLORS.length] + 'D9', stacked: true
+                        })),
+                        {
+                            type: 'line', label: 'Pod Capacity',
+                            data: [1, 2, 3, 4].map(() => Math.round(cap.totalSupplyQ)),
+                            borderColor: '#E60000', borderWidth: 2, borderDash: [6, 4],
+                            pointRadius: 0, fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12 } } },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+                        y: { stacked: true, grid: { color: '#ECEBE4' }, ticks: { font: { size: 10 } },
+                             title: { display: true, text: 'Person-days', font: { size: 11 } } }
+                    }
+                }
+            });
+            // Utilization table
+            document.getElementById('utilHead').innerHTML =
+                '<th>Role</th><th class="text-right">FTE</th>' +
+                cap.quarters.map(q => `<th class="text-right">${q}</th>`).join('') +
+                '<th class="text-right">Year</th>';
+            document.getElementById('utilBody').innerHTML = ROLES.map(r => {
+                const cells = cap.quarters.map((_, qi) => {
+                    const u = cap.supply[r.key] > 0 ? cap.demandByRole[r.key][qi] / cap.supply[r.key] : 0;
+                    const cls = u > 1 ? 'badge-danger' : u > 0.85 ? 'badge-warning' : 'badge-success';
+                    return `<td class="text-right util-cell"><span class="badge ${cls}">${Math.round(u * 100)}%</span></td>`;
+                }).join('');
+                const yearD = cap.demandByRole[r.key].reduce((a, b) => a + b, 0);
+                const yearU = cap.supply[r.key] > 0 ? yearD / (cap.supply[r.key] * 4) : 0;
+                const yCls = yearU > 1 ? 'badge-danger' : yearU > 0.85 ? 'badge-warning' : 'badge-success';
+                return `<tr><td><b>${r.label}</b></td>
+                    <td class="text-right">${state.settings.team[r.key]}</td>${cells}
+                    <td class="text-right"><span class="badge ${yCls}">${Math.round(yearU * 100)}%</span></td></tr>`;
+            }).join('');
+        }
+
+        function renderTeamConfig() {
+            const tc = document.getElementById('teamConfig');
+            tc.innerHTML = ROLES.map(r => `
+                <div class="tc-field">
+                    <label>${r.label} (FTE)</label>
+                    <input type="number" step="0.1" min="0" value="${state.settings.team[r.key]}"
+                        onchange="updateTeam('${r.key}', this.value)">
+                </div>`).join('') + `
+                <div class="tc-field">
+                    <label>Workdays / month</label>
+                    <input type="number" step="1" min="1" value="${state.settings.workdaysPerMonth}"
+                        onchange="updateWorkdays(this.value)">
+                </div>
+                <div class="tc-field">
+                    <label>PW budget / qtr (min)</label>
+                    <input type="number" step="0.5" min="0" value="${state.settings.podWeekBudget.min}"
+                        onchange="updatePodBudget('min', this.value)">
+                </div>
+                <div class="tc-field">
+                    <label>PW budget / qtr (max)</label>
+                    <input type="number" step="0.5" min="0" value="${state.settings.podWeekBudget.max}"
+                        onchange="updatePodBudget('max', this.value)">
+                </div>`;
+        }
+        function updatePodBudget(key, val) {
+            state.settings.podWeekBudget[key] = Number(val) || 0;
+            saveState(); renderCapacity(); renderKpis();
+        }
+        function updateTeam(key, val) {
+            state.settings.team[key] = Number(val) || 0;
+            saveState(); renderCapacity(); renderKpis();
+        }
+        function updateWorkdays(val) {
+            state.settings.workdaysPerMonth = Number(val) || 18;
+            saveState(); renderCapacity(); renderKpis();
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  ITEMS TABLE
+        // ════════════════════════════════════════════════════════════
+        function renderItemsTable() {
+            let rows = filteredItems();
+            const { col, dir } = itemsSort;
+            rows = [...rows].sort((a, b) => {
+                const va = a[col] ?? '', vb = b[col] ?? '';
+                const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+                return dir === 'asc' ? c : -c;
+            });
+            document.getElementById('itemsCount').textContent = `${rows.length} items`;
+            document.getElementById('itemsBody').innerHTML = rows.map(it => `
+                <tr>
+                    <td><b>${esc(it.name)}</b>${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
+                    <td>${esc(it.workstream)}</td>
+                    <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
+                    <td>${it.start}</td>
+                    <td>${it.type === 'milestone' ? '–' : it.end}</td>
+                    <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
+                    <td><span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span></td>
+                    <td class="text-right">${it.type === 'milestone' ? '–' : (it.progress || 0) + '%'}</td>
+                    <td style="font-size:0.7rem;color:var(--medium-gray)">${esc((it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ')) || '–'}</td>
+                    <td class="row-actions">
+                        <button onclick="openEditor('${it.id}')">Edit</button>
+                        <button class="del" onclick="deleteItem('${it.id}')">Delete</button>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function initSortHandlers() {
+            document.querySelectorAll('#prioTable .sort-header').forEach(th => th.addEventListener('click', () => {
+                const col = th.dataset.col;
+                prioSort = { col, dir: prioSort.col === col && prioSort.dir === 'desc' ? 'asc' : 'desc' };
+                document.querySelectorAll('#prioTable .sort-header').forEach(h => h.classList.remove('asc', 'desc'));
+                th.classList.add(prioSort.dir);
+                renderPrioTable();
+            }));
+            document.querySelectorAll('#itemsTable .sort-header').forEach(th => th.addEventListener('click', () => {
+                const col = th.dataset.col;
+                itemsSort = { col, dir: itemsSort.col === col && itemsSort.dir === 'asc' ? 'desc' : 'asc' };
+                document.querySelectorAll('#itemsTable .sort-header').forEach(h => h.classList.remove('asc', 'desc'));
+                th.classList.add(itemsSort.dir);
+                renderItemsTable();
+            }));
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  ITEM EDITOR
+        // ════════════════════════════════════════════════════════════
+        function openEditor(id) {
+            editingId = id || null;
+            const it = id ? byId(id) : null;
+            document.getElementById('modalTitle').textContent = it ? 'Edit Item' : 'Add Item';
+            document.getElementById('deleteBtn').style.display = it ? '' : 'none';
+            const y = state.settings.year;
+            document.getElementById('fName').value = it?.name || '';
+            document.getElementById('fType').value = it?.type || 'epic';
+            document.getElementById('fPod').value = it?.workstream || '';
+            document.getElementById('fStart').value = it?.start || `${y}-01`;
+            document.getElementById('fEnd').value = it?.end || `${y}-03`;
+            document.getElementById('fStatus').value = it?.status || 'planned';
+            document.getElementById('fPriority').value = it?.priority || 'should';
+            document.getElementById('fProgress').value = it?.progress ?? 0;
+            document.getElementById('fValue').value = it?.value ?? 5;
+            document.getElementById('fEffort').value = it?.effort ?? 5;
+            document.getElementById('fPodWeeks').value = it?.podWeeks ?? '';
+            ROLES.forEach(r => {
+                document.getElementById('fCap' + r.key.charAt(0).toUpperCase() + r.key.slice(1)).value = it?.capacity?.[r.key] ?? 0;
+            });
+            const depSel = document.getElementById('fDeps');
+            depSel.innerHTML = state.items.filter(o => o.id !== id).map(o =>
+                `<option value="${o.id}"${it?.dependsOn?.includes(o.id) ? ' selected' : ''}>${esc(o.name)} (${o.start})</option>`).join('');
+            document.getElementById('fDescription').value = it?.description || '';
+            const gi = it?.gitlab;
+            document.getElementById('fGitlabField').style.display = gi ? '' : 'none';
+            if (gi) {
+                const iss = gi.issues || [];
+                const closed = iss.filter(i => i.state === 'closed').length;
+                document.getElementById('fGitlabInfo').innerHTML = `
+                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:0.4rem">
+                        <a href="${esc(gi.webUrl)}" target="_blank" rel="noopener" style="color:var(--link);font-weight:600">${esc(gi.epic?.reference || 'Open epic in GitLab')}</a>
+                        ${gi.missing ? '<span class="badge badge-danger">not found in GitLab</span>'
+                            : `<span class="badge ${gi.epic?.state === 'closed' ? 'badge-done' : 'badge-success'}">${gi.epic?.state === 'closed' ? 'Closed' : 'Open'}</span>`}
+                        <span style="color:var(--medium-gray);font-size:0.68rem">${gi.lastSync ? 'synced ' + new Date(gi.lastSync).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                        <button class="gl-link-btn" style="margin-left:auto;color:var(--danger)" onclick="glUnlinkFromEditor()">Unlink</button>
+                    </div>
+                    ${iss.length ? `<div style="font-size:0.7rem;color:var(--medium-gray);margin-bottom:0.25rem">${closed}/${iss.length} issues closed</div>` : ''}
+                    ${glIssueListHtml(gi.issues)}`;
+            }
+            onTypeChange();
+            document.getElementById('modalOverlay').classList.add('open');
+            document.getElementById('fName').focus();
+        }
+        function onTypeChange() {
+            const isMs = document.getElementById('fType').value === 'milestone';
+            document.getElementById('endField').style.display = isMs ? 'none' : '';
+            document.getElementById('progressField').style.display = isMs ? 'none' : '';
+            document.getElementById('effortField').style.display = isMs ? 'none' : '';
+            document.getElementById('podWeeksField').style.display = isMs ? 'none' : '';
+            document.getElementById('valueField').style.display = isMs ? 'none' : '';
+            document.getElementById('capField').style.display = isMs ? 'none' : '';
+        }
+        function closeEditor() { document.getElementById('modalOverlay').classList.remove('open'); }
+        function saveEditor() {
+            const name = document.getElementById('fName').value.trim();
+            const ws = document.getElementById('fPod').value.trim();
+            const start = document.getElementById('fStart').value;
+            if (!name || !ws || !start) { alert('Name, workstream and start month are required.'); return; }
+            const type = document.getElementById('fType').value;
+            let end = type === 'milestone' ? start : document.getElementById('fEnd').value;
+            if (!end || end < start) end = start;
+            const capacity = {};
+            ROLES.forEach(r => {
+                capacity[r.key] = type === 'milestone' ? 0 :
+                    Number(document.getElementById('fCap' + r.key.charAt(0).toUpperCase() + r.key.slice(1)).value) || 0;
+            });
+            const item = {
+                id: editingId || 'i' + Date.now().toString(36),
+                name, workstream: ws, type, start, end,
+                status: document.getElementById('fStatus').value,
+                priority: document.getElementById('fPriority').value,
+                progress: type === 'milestone' ? 0 : clamp(Number(document.getElementById('fProgress').value) || 0, 0, 100),
+                value: clamp(Number(document.getElementById('fValue').value) || 5, 1, 10),
+                effort: type === 'milestone' ? 1 : clamp(Number(document.getElementById('fEffort').value) || 5, 1, 10),
+                podWeeks: (() => {
+                    if (type === 'milestone') return null;
+                    const pw = parseFloat(document.getElementById('fPodWeeks').value);
+                    return pw > 0 ? pw : null;
+                })(),
+                capacity,
+                dependsOn: [...document.getElementById('fDeps').selectedOptions].map(o => o.value),
+                description: document.getElementById('fDescription').value.trim()
+            };
+            const prevGl = editingId ? byId(editingId)?.gitlab : null;
+            if (prevGl) item.gitlab = prevGl;
+            if (editingId) {
+                const idx = state.items.findIndex(i => i.id === editingId);
+                state.items[idx] = item;
+            } else {
+                state.items.push(item);
+            }
+            saveState(); closeEditor(); refreshFilterOptions(); renderAll();
+        }
+        function deleteItem(id) {
+            const it = byId(id);
+            if (!confirm(`Delete "${it.name}"?`)) return;
+            state.items = state.items.filter(i => i.id !== id);
+            state.items.forEach(i => i.dependsOn = (i.dependsOn || []).filter(d => d !== id));
+            saveState(); refreshFilterOptions(); renderAll();
+        }
+        function deleteItemFromModal() { if (editingId) { closeEditor(); deleteItem(editingId); } }
+        function glUnlinkFromEditor() {
+            const it = editingId ? byId(editingId) : null;
+            if (!it?.gitlab) return;
+            if (!confirm('Unlink this item from GitLab? It becomes a normal manual item; the epic stays in GitLab.')) return;
+            delete it.gitlab;
+            saveState();
+            document.getElementById('fGitlabField').style.display = 'none';
+            renderAll();
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  EXPORT — EXCEL (corporate format, month↔quarter grouping)
+        // ════════════════════════════════════════════════════════════
+        const XL = {
+            headerFill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF404040' } },
+            headerFont: { name: 'Arial', bold: true, color: { argb: 'FFFFFFFF' }, size: 10 },
+            headerBorder: {
+                bottom: { style: 'medium', color: { argb: 'FFE60000' } },
+                right: { style: 'thin', color: { argb: 'FFCCCABC' } }
+            },
+            dataFont: { name: 'Arial', size: 10 },
+            dataBorder: {
+                bottom: { style: 'thin', color: { argb: 'FFCCCABC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCABC' } }
+            },
+            altFill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F7F2' } }
+        };
+
+        function styleHeaderRow(row) {
+            row.height = 30;
+            row.eachCell(cell => {
+                cell.fill = XL.headerFill;
+                cell.font = XL.headerFont;
+                cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+                cell.border = XL.headerBorder;
+            });
+        }
+        function styleDataRow(row, idx) {
+            row.eachCell({ includeEmpty: false }, cell => {
+                cell.font = XL.dataFont;
+                cell.alignment = { horizontal: 'left', vertical: 'top', wrapText: true };
+                cell.border = XL.dataBorder;
+                if (idx % 2 === 0 && !cell.fill?.fgColor) cell.fill = XL.altFill;
+            });
+        }
+        function buildDataSheet(wb, sheetName, data, columns) {
+            const ws = wb.addWorksheet(sheetName);
+            const headerRow = ws.addRow(columns);
+            styleHeaderRow(headerRow);
+            data.forEach((row, idx) => {
+                const dr = ws.addRow(columns.map(c => row[c] ?? ''));
+                styleDataRow(dr, idx);
+            });
+            columns.forEach((c, i) => {
+                let mx = c.length;
+                data.slice(0, 100).forEach(r => { mx = Math.max(mx, String(r[c] ?? '').length); });
+                ws.getColumn(i + 1).width = Math.min(mx + 2, 50);
+            });
+            ws.views = [{ state: 'frozen', ySplit: 1 }];
+            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+            return ws;
+        }
+
+        async function exportXlsx() {
+            setStatus('Building XLSX…');
+            const mode = document.querySelector('input[name="xlsxGran"]:checked').value;
+            const items = filteredItems();
+            const y = state.settings.year;
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Roadmap Tool';
+            wb.created = new Date();
+
+            // ── Sheet 1: Roadmap (Gantt grid) ──
+            const ws = wb.addWorksheet('Roadmap', { views: [{ state: 'frozen', xSplit: 5, ySplit: 1 }] });
+            const fixedCols = ['Pod', 'Initiative', 'Status', 'Priority', 'Progress'];
+            const headers = [...fixedCols];
+            const colMeta = []; // {type:'q'|'m', q: 0-3, m: 0-11}
+            for (let q = 0; q < 4; q++) {
+                headers.push(`Q${q + 1}`);
+                colMeta.push({ type: 'q', q });
+                if (mode === 'monthGrouped') {
+                    for (let m = q * 3; m < q * 3 + 3; m++) {
+                        headers.push(MONTHS[m]);
+                        colMeta.push({ type: 'm', q, m });
+                    }
+                }
+            }
+            const headerRow = ws.addRow(headers);
+            styleHeaderRow(headerRow);
+            headerRow.eachCell((cell, colNumber) => {
+                if (colNumber > fixedCols.length) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
+
+            const sorted = [...items].sort((a, b) =>
+                a.workstream.localeCompare(b.workstream) || a.start.localeCompare(b.start));
+            sorted.forEach((it, idx) => {
+                const meta = STATUS_META[it.status];
+                const s = ymToIdx(it.start), e = ymToIdx(it.end);
+                const vals = [it.workstream, it.name + (it.type === 'milestone' ? ' ◆' : ''),
+                    meta.label, PRIO_META[it.priority].label,
+                    it.type === 'milestone' ? '' : (it.progress || 0) + '%'];
+                colMeta.forEach(cm => {
+                    if (cm.type === 'q') {
+                        const qs = cm.q * 3, qe = qs + 2;
+                        vals.push(s <= qe && e >= qs ? (it.type === 'milestone' ? '◆' : '█') : '');
+                    } else {
+                        vals.push(s <= cm.m && e >= cm.m ? (it.type === 'milestone' ? '◆' : '█') : '');
+                    }
+                });
+                const row = ws.addRow(vals);
+                styleDataRow(row, idx);
+                colMeta.forEach((cm, ci) => {
+                    const cell = row.getCell(fixedCols.length + 1 + ci);
+                    const filled = cm.type === 'q'
+                        ? (s <= cm.q * 3 + 2 && e >= cm.q * 3)
+                        : (s <= cm.m && e >= cm.m);
+                    if (filled) {
+                        cell.value = '';
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: meta.argb } };
+                        if (it.type === 'milestone') {
+                            cell.value = '◆';
+                            cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+                            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE60000' } };
+                        }
+                    }
+                    cell.border = XL.dataBorder;
+                });
+            });
+
+            // Column widths + month/quarter outline grouping
+            ws.getColumn(1).width = 26; ws.getColumn(2).width = 36;
+            ws.getColumn(3).width = 10; ws.getColumn(4).width = 9; ws.getColumn(5).width = 9;
+            colMeta.forEach((cm, ci) => {
+                const col = ws.getColumn(fixedCols.length + 1 + ci);
+                col.width = cm.type === 'q' ? 7 : 5;
+                if (cm.type === 'm') {
+                    col.outlineLevel = 1; // grouped under the quarter column to its left
+                }
+            });
+            if (mode === 'monthGrouped') {
+                ws.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
+            }
+            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: fixedCols.length } };
+
+            // Legend
+            ws.addRow([]);
+            const legendRow = ws.addRow(['Legend:']);
+            legendRow.getCell(1).font = { name: 'Arial', size: 9, bold: true };
+            Object.values(STATUS_META).forEach((sm, i) => {
+                const r = ws.addRow(['', sm.label]);
+                r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: sm.argb } };
+                r.getCell(2).font = { name: 'Arial', size: 9 };
+            });
+
+            // ── Sheet 2: Items (data) ──
+            const itemRows = items.map(it => ({
+                'Pod': it.workstream, 'Name': it.name,
+                'Type': it.type === 'milestone' ? 'Milestone' : 'Initiative',
+                'Start': it.start, 'End': it.type === 'milestone' ? it.start : it.end,
+                'Status': STATUS_META[it.status].label, 'Priority': PRIO_META[it.priority].label,
+                'Progress %': it.type === 'milestone' ? '' : (it.progress || 0),
+                'Business Value': it.value, 'Effort': it.type === 'milestone' ? '' : it.effort,
+                'Pod Weeks': it.type === 'milestone' ? '' : (it.podWeeks ?? ''),
+                'Score': it.type === 'milestone' ? '' : score(it),
+                'Demand Dev (PD)': it.capacity?.dev || 0, 'Demand BA (PD)': it.capacity?.ba || 0,
+                'Demand Test (PD)': it.capacity?.qa || 0, 'Demand SRE (PD)': it.capacity?.sre || 0,
+                'Demand SM (PD)': it.capacity?.sm || 0,
+                'Depends On': (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', '),
+                'Description': it.description || ''
+            }));
+            buildDataSheet(wb, 'Items', itemRows, Object.keys(itemRows[0] || { Name: '' }));
+
+            // ── Sheet 3: Capacity ──
+            const cap = capacityModel(items);
+            const capRows = ROLES.map(r => {
+                const row = { 'Role': r.label, 'FTE': state.settings.team[r.key], 'Capacity per Quarter (PD)': Math.round(cap.supply[r.key]) };
+                cap.quarters.forEach((q, qi) => {
+                    row[`${q} Demand (PD)`] = Math.round(cap.demandByRole[r.key][qi]);
+                    row[`${q} Util %`] = cap.supply[r.key] > 0 ? Math.round(cap.demandByRole[r.key][qi] / cap.supply[r.key] * 100) : 0;
+                });
+                return row;
+            });
+            const capSheet = buildDataSheet(wb, 'Capacity', capRows, Object.keys(capRows[0]));
+            // RAG-color the utilization cells
+            const capCols = Object.keys(capRows[0]);
+            capRows.forEach((r, idx) => {
+                capCols.forEach((c, ci) => {
+                    if (!c.endsWith('Util %')) return;
+                    const cell = capSheet.getRow(idx + 2).getCell(ci + 1);
+                    const u = r[c];
+                    const argb = u > 100 ? 'FFBD000C' : u > 85 ? 'FFE4A911' : 'FF6F7A1A';
+                    cell.font = { name: 'Arial', size: 10, bold: true, color: { argb } };
+                });
+            });
+
+            const buffer = await wb.xlsx.writeBuffer();
+            downloadBlob(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+                `roadmap_${y}_${stamp()}.xlsx`);
+            setStatus('XLSX exported');
+        }
+
+        function exportItemsCsv() {
+            const items = filteredItems();
+            const columns = ['Pod', 'Name', 'Type', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'Effort', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
+            const data = items.map(it => ({
+                Pod: it.workstream, Name: it.name,
+                Type: it.type === 'milestone' ? 'Milestone' : 'Initiative',
+                Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
+                Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
+                Value: it.value, Effort: it.effort, PodWeeks: it.podWeeks ?? '', Score: score(it),
+                DependsOn: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join('; '),
+                Description: it.description || ''
+            }));
+            const header = columns.join(',');
+            const rows = data.map(r => columns.map(c => {
+                const v = String(r[c] ?? '');
+                return v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v;
+            }).join(','));
+            downloadBlob(new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' }),
+                `roadmap_items_${stamp()}.csv`);
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  EXPORT — POWERPOINT (native shapes, 16:9)
+        // ════════════════════════════════════════════════════════════
+        async function exportPptx() {
+            try {
+                await buildPptx();
+            } catch (e) {
+                console.error('PPTX export failed:', e);
+                setStatus('PPTX export failed');
+                alert('PPTX export failed: ' + e.message);
+            }
+        }
+
+        async function buildPptx() {
+            if (typeof PptxGenJS === 'undefined') {
+                throw new Error('PptxGenJS library not loaded — check internet access to cdn.jsdelivr.net and reload the page.');
+            }
+            setStatus('Building PPTX…');
+            const items = filteredItems();
+            const y = state.settings.year;
+            const pptx = new PptxGenJS();
+            pptx.defineLayout({ name: 'WIDE', width: 13.33, height: 7.5 });
+            pptx.layout = 'WIDE';
+
+            const C = { red: 'E60000', darkGray: '404040', medGray: '7A7870', lightGray: 'CCCABC',
+                        lighter: 'ECEBE4', rowAlt: 'F8F7F2', white: 'FFFFFF' };
+            const statusFill = { planned: 'B8B3A2', ontrack: '6F7A1A', atrisk: 'E4A911', delayed: 'BD000C', done: '404040' };
+
+            const ML = 0.45, MR = 0.45, LABEL_W = 1.9;
+            const gridX = ML + LABEL_W, gridW = 13.33 - ML - MR - LABEL_W;
+            const monthW = gridW / 12;
+
+            function addHeader(slide, title, subtitle) {
+                slide.addShape('rect', { x: 0, y: 0, w: 13.33, h: 0.06, fill: { color: C.red } });
+                slide.addText(title, { x: ML, y: 0.22, w: 9, h: 0.5, fontSize: 22, bold: true, color: '000000', fontFace: 'Arial' });
+                slide.addText(subtitle, { x: ML, y: 0.68, w: 9, h: 0.3, fontSize: 11, color: C.medGray, fontFace: 'Arial' });
+                slide.addText(`As of ${stamp()}`, { x: 10.6, y: 0.3, w: 2.3, h: 0.3, fontSize: 10, color: C.medGray, align: 'right', fontFace: 'Arial' });
+            }
+
+            // ── Roadmap slide(s) ──
+            const lanes = workstreams(items);
+            const laneBlocks = lanes.map(ws => {
+                const laneItems = items.filter(i => i.workstream === ws);
+                const bars = laneItems.filter(i => i.type === 'epic');
+                const miles = laneItems.filter(i => i.type === 'milestone');
+                const nRows = packRows(bars);
+                return { ws, bars, miles, rows: nRows + (miles.length ? 1 : 0) };
+            });
+            // paginate: max rows per slide
+            const MAX_ROWS = 13;
+            const pages = [];
+            let cur = [], curRows = 0;
+            laneBlocks.forEach(b => {
+                if (curRows + b.rows > MAX_ROWS && cur.length) { pages.push(cur); cur = []; curRows = 0; }
+                cur.push(b); curRows += b.rows;
+            });
+            if (cur.length) pages.push(cur);
+
+            const filterDesc = describeFilters();
+            function drawRoadmapSlide(page, title, subtitle) {
+                const slide = pptx.addSlide();
+                addHeader(slide, title, subtitle);
+
+                const headY = 1.15, qH = 0.32, mH = 0.26;
+                // Quarter band
+                for (let q = 0; q < 4; q++) {
+                    slide.addShape('rect', { x: gridX + q * 3 * monthW, y: headY, w: 3 * monthW, h: qH,
+                        fill: { color: C.lighter }, line: { color: C.lightGray, width: 0.75 } });
+                    slide.addText(`Q${q + 1} ${y}`, { x: gridX + q * 3 * monthW, y: headY, w: 3 * monthW, h: qH,
+                        fontSize: 11, bold: true, align: 'center', valign: 'middle', color: '404040', fontFace: 'Arial' });
+                }
+                // Month band
+                MONTHS.forEach((mn, mi) => {
+                    slide.addShape('rect', { x: gridX + mi * monthW, y: headY + qH, w: monthW, h: mH,
+                        fill: { color: C.rowAlt }, line: { color: C.lighter, width: 0.5 } });
+                    slide.addText(mn, { x: gridX + mi * monthW, y: headY + qH, w: monthW, h: mH,
+                        fontSize: 8, align: 'center', valign: 'middle', color: C.medGray, fontFace: 'Arial' });
+                });
+
+                const laneTop = headY + qH + mH + 0.05;
+                // scale row height up when a slide holds few rows (per-pod slides)
+                const totalRows = page.reduce((s, b) => s + b.rows, 0);
+                const ROW_H = clamp(5.0 / Math.max(totalRows, 1), 0.36, 0.6), LANE_PAD = 0.08;
+                const barFont = ROW_H > 0.45 ? 10 : 8;
+                let yCur = laneTop;
+                const barPositions = {}; // id → {x1,y,x2}
+
+                page.forEach(block => {
+                    const laneH = LANE_PAD * 2 + block.rows * ROW_H;
+                    // lane label + background
+                    slide.addShape('rect', { x: ML, y: yCur, w: LABEL_W, h: laneH,
+                        fill: { color: C.rowAlt }, line: { color: C.lightGray, width: 0.5 } });
+                    slide.addText(block.ws, { x: ML + 0.08, y: yCur, w: LABEL_W - 0.16, h: laneH,
+                        fontSize: 10, bold: true, valign: 'middle', color: '404040', fontFace: 'Arial' });
+                    slide.addShape('rect', { x: gridX, y: yCur, w: gridW, h: laneH,
+                        fill: { color: C.white }, line: { color: C.lightGray, width: 0.5 } });
+                    // quarter gridlines
+                    for (let q = 1; q < 4; q++) {
+                        slide.addShape('line', { x: gridX + q * 3 * monthW, y: yCur, w: 0, h: laneH,
+                            line: { color: C.lighter, width: 0.5 } });
+                    }
+                    block.bars.forEach(it => {
+                        const s = clamp(ymToIdx(it.start), 0, 11), e = clamp(ymToIdx(it.end), 0, 11);
+                        const bx = gridX + s * monthW + 0.02, bw = (e - s + 1) * monthW - 0.04;
+                        const by = yCur + LANE_PAD + it._row * ROW_H, bh = ROW_H - 0.07;
+                        slide.addShape('roundRect', { x: bx, y: by, w: bw, h: bh, rectRadius: 0.03,
+                            fill: { color: statusFill[it.status] }, line: { type: 'none' } });
+                        if (it.progress > 0) {
+                            slide.addShape('rect', { x: bx, y: by + bh - 0.035, w: bw * it.progress / 100, h: 0.035,
+                                fill: { color: C.white, transparency: 15 }, line: { type: 'none' } });
+                        }
+                        const label = it.name + (it.progress ? `  ${it.progress}%` : '');
+                        slide.addText(label, { x: bx + 0.04, y: by, w: Math.max(bw - 0.08, 0.4), h: bh,
+                            fontSize: barFont, bold: true, color: 'FFFFFF', valign: 'middle', fontFace: 'Arial',
+                            fit: 'shrink' });
+                        barPositions[it.id] = { x1: bx, x2: bx + bw, y: by + bh / 2 };
+                    });
+                    const msY = yCur + LANE_PAD + (block.rows - 1) * ROW_H + 0.06;
+                    block.miles.sort((a, b) => a.start.localeCompare(b.start)).forEach((it, mi) => {
+                        const s = clamp(ymToIdx(it.start), 0, 11);
+                        const cx = gridX + (s + 0.5) * monthW;
+                        slide.addShape('diamond', { x: cx - 0.09, y: msY, w: 0.18, h: 0.18,
+                            fill: { color: it.status === 'done' ? C.darkGray : C.red },
+                            line: { color: C.white, width: 1 } });
+                        // late-year labels go left of the diamond; alternate vertically to avoid collisions
+                        const lblX = s >= 10 ? cx - 2.52 : cx + 0.12;
+                        slide.addText(it.name, { x: lblX, y: msY - 0.04 + (mi % 2 ? 0.16 : 0), w: 2.4, h: 0.26,
+                            fontSize: 8, bold: true, color: '404040', fontFace: 'Arial',
+                            align: s >= 10 ? 'right' : 'left' });
+                        barPositions[it.id] = { x1: cx - 0.09, x2: cx + 0.09, y: msY + 0.09 };
+                    });
+                    yCur += laneH;
+                });
+
+                // Dependency connectors
+                if (document.getElementById('showDeps').checked) {
+                    const pageIds = new Set(page.flatMap(b => [...b.bars, ...b.miles]).map(i => i.id));
+                    page.flatMap(b => [...b.bars, ...b.miles]).forEach(it => {
+                        (it.dependsOn || []).forEach(depId => {
+                            if (!pageIds.has(depId)) return;
+                            const from = barPositions[depId], to = barPositions[it.id];
+                            if (!from || !to) return;
+                            const p = byId(depId);
+                            const conflict = p && it.start < p.end;
+                            slide.addShape('line', {
+                                x: from.x2, y: from.y, w: Math.max(to.x1 - from.x2, 0.05), h: to.y - from.y,
+                                line: { color: conflict ? 'BD000C' : '7A7870', width: conflict ? 1.5 : 1,
+                                        dashType: conflict ? 'dash' : 'solid', endArrowType: 'triangle' }
+                            });
+                        });
+                    });
+                }
+
+                // Today line
+                const now = new Date();
+                if (now.getFullYear() === y) {
+                    const frac = (now.getMonth() + (now.getDate() - 1) / 31) / 12;
+                    const tx = gridX + frac * gridW;
+                    slide.addShape('line', { x: tx, y: headY, w: 0, h: yCur - headY,
+                        line: { color: C.red, width: 1.5, dashType: 'dash' } });
+                    slide.addText('Today', { x: tx - 0.3, y: yCur + 0.02, w: 0.7, h: 0.22,
+                        fontSize: 8, bold: true, color: C.red, align: 'center', fontFace: 'Arial' });
+                }
+
+                // Legend
+                let lx = ML;
+                const ly = 7.08;
+                Object.entries(STATUS_META).forEach(([k, sm]) => {
+                    slide.addShape('rect', { x: lx, y: ly + 0.03, w: 0.16, h: 0.13, fill: { color: statusFill[k] }, line: { type: 'none' } });
+                    slide.addText(sm.label, { x: lx + 0.2, y: ly - 0.04, w: 0.9, h: 0.26, fontSize: 8, color: C.medGray, fontFace: 'Arial' });
+                    lx += 1.05;
+                });
+                slide.addShape('diamond', { x: lx, y: ly + 0.02, w: 0.14, h: 0.14, fill: { color: C.red }, line: { type: 'none' } });
+                slide.addText('Milestone', { x: lx + 0.2, y: ly - 0.04, w: 1, h: 0.26, fontSize: 8, color: C.medGray, fontFace: 'Arial' });
+            }
+
+            // Portfolio overview first (all pods), then one slide per pod
+            pages.forEach((page, pi) => drawRoadmapSlide(page,
+                `Technology Roadmap ${y}${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}`,
+                filterDesc || 'Portfolio overview — all pods'));
+            laneBlocks.forEach(b => drawRoadmapSlide([b], b.ws,
+                `Pod roadmap ${y}${filterDesc ? ' — ' + filterDesc : ''}`));
+
+            // ── Priority + capacity slides ──
+            if (document.getElementById('pptIncludeTables').checked) {
+                const epics = prioRows().sort((a, b) => b.score - a.score).slice(0, 14);
+                const slide2 = pptx.addSlide();
+                addHeader(slide2, 'Priority Ranking', 'Score = business value ÷ effort, weighted by MoSCoW — decision basis for sequencing');
+                const headerOpts = { fill: { color: C.darkGray }, color: 'FFFFFF', bold: true, fontSize: 10, fontFace: 'Arial', valign: 'middle' };
+                const tblRows = [[
+                    { text: '#', options: headerOpts }, { text: 'Initiative', options: headerOpts },
+                    { text: 'Pod', options: headerOpts }, { text: 'Priority', options: headerOpts },
+                    { text: 'Value', options: headerOpts }, { text: 'Effort', options: headerOpts },
+                    { text: 'Pod Wks', options: headerOpts },
+                    { text: 'Demand (PD)', options: headerOpts }, { text: 'Score', options: headerOpts },
+                    { text: 'Status', options: headerOpts }
+                ]];
+                epics.forEach((r, i) => {
+                    const fill = i % 2 === 0 ? C.rowAlt : C.white;
+                    const base = { fontSize: 9, fontFace: 'Arial', fill: { color: fill }, color: '404040', valign: 'middle' };
+                    tblRows.push([
+                        { text: String(i + 1), options: base },
+                        { text: r.name, options: { ...base, bold: true } },
+                        { text: r.workstream, options: base },
+                        { text: PRIO_META[r.priority].label, options: base },
+                        { text: String(r.value), options: base },
+                        { text: String(r.effort), options: base },
+                        { text: r.podWeeks ? String(r.podWeeks) : '–', options: { ...base, bold: !!r.podWeeks } },
+                        { text: String(r.capTotal), options: base },
+                        { text: r.score.toFixed(2), options: { ...base, bold: true } },
+                        { text: STATUS_META[r.status].label, options: { ...base, color: statusFill[r.status] } }
+                    ]);
+                });
+                slide2.addTable(tblRows, {
+                    x: ML, y: 1.2, w: 12.43, colW: [0.5, 3.0, 2.1, 1.0, 0.8, 0.8, 0.9, 1.3, 0.9, 1.13],
+                    border: { type: 'solid', color: C.lightGray, pt: 0.5 }, rowH: 0.32
+                });
+
+                const cap = capacityModel(items);
+                const slide3 = pptx.addSlide();
+                addHeader(slide3, 'Capacity vs. Demand', `Pod: ${ROLES.map(r => `${state.settings.team[r.key]} ${r.label}`).join(' · ')} — ${state.settings.workdaysPerMonth} workdays/month`);
+                const capRows2 = [[
+                    { text: 'Role', options: headerOpts }, { text: 'FTE', options: headerOpts },
+                    ...cap.quarters.map(q => ({ text: `${q} Util`, options: headerOpts })),
+                    { text: 'Year Util', options: headerOpts }
+                ]];
+                ROLES.forEach((r, i) => {
+                    const fill = i % 2 === 0 ? C.rowAlt : C.white;
+                    const base = { fontSize: 10, fontFace: 'Arial', fill: { color: fill }, color: '404040', valign: 'middle' };
+                    const cells = cap.quarters.map((_, qi) => {
+                        const u = cap.supply[r.key] > 0 ? cap.demandByRole[r.key][qi] / cap.supply[r.key] : 0;
+                        const col = u > 1 ? 'BD000C' : u > 0.85 ? 'E4A911' : '6F7A1A';
+                        return { text: Math.round(u * 100) + '%', options: { ...base, bold: true, color: col } };
+                    });
+                    const yearD = cap.demandByRole[r.key].reduce((a, b) => a + b, 0);
+                    const yu = cap.supply[r.key] > 0 ? yearD / (cap.supply[r.key] * 4) : 0;
+                    const ycol = yu > 1 ? 'BD000C' : yu > 0.85 ? 'E4A911' : '6F7A1A';
+                    capRows2.push([
+                        { text: r.label, options: { ...base, bold: true } },
+                        { text: String(state.settings.team[r.key]), options: base },
+                        ...cells,
+                        { text: Math.round(yu * 100) + '%', options: { ...base, bold: true, color: ycol } }
+                    ]);
+                });
+                slide3.addTable(capRows2, {
+                    x: ML, y: 1.3, w: 9, colW: [2.2, 0.9, 1.18, 1.18, 1.18, 1.18, 1.18],
+                    border: { type: 'solid', color: C.lightGray, pt: 0.5 }, rowH: 0.4
+                });
+                slide3.addText('Utilization legend:  green ≤ 85%   amber 86–100%   red > 100%', {
+                    x: ML, y: 4.2, w: 8, h: 0.3, fontSize: 10, color: C.medGray, fontFace: 'Arial' });
+            }
+
+            // Use our own blob download (same path as XLSX) — pptx.writeFile()
+            // silently fails in some browsers (Safari) and managed environments.
+            const blob = await pptx.write('blob');
+            downloadBlob(blob, `roadmap_${y}_${stamp()}.pptx`);
+            setStatus('PPTX exported');
+        }
+
+        function describeFilters() {
+            const parts = [];
+            const ws = document.getElementById('fltPod').value;
+            const st = document.getElementById('fltStatus').value;
+            const pr = document.getElementById('fltPriority').value;
+            const q = document.getElementById('fltSearch').value.trim();
+            if (ws) parts.push(ws);
+            if (st) parts.push('Status: ' + STATUS_META[st].label);
+            if (pr) parts.push('Priority: ' + PRIO_META[pr].label);
+            if (q) parts.push(`Search: "${q}"`);
+            return parts.length ? 'Filtered view — ' + parts.join(' · ') : '';
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  EXPORT — JSON backup / import / reset
+        // ════════════════════════════════════════════════════════════
+        function exportJson() {
+            downloadBlob(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
+                `roadmap_data_${stamp()}.json`);
+        }
+        function importJson(ev) {
+            const file = ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    if (!Array.isArray(data.items) || !data.settings) throw new Error('Invalid format');
+                    state = data;
+                    saveState(); initYearSelect(); refreshFilterOptions(); renderAll();
+                    setStatus('Data imported');
+                } catch (e) { alert('Import failed: ' + e.message); }
+            };
+            reader.readAsText(file);
+            ev.target.value = '';
+        }
+        function resetSample() {
+            if (!confirm('Replace all current data with the sample book of work?')) return;
+            state = sampleData();
+            saveState(); initYearSelect(); refreshFilterOptions(); renderAll();
+        }
+
+        function renderExportPreview() {
+            const items = filteredItems();
+            const cols = ['Pod', 'Name', 'Type', 'Start', 'End', 'Status', 'Priority', 'Progress'];
+            document.getElementById('exportCount').textContent =
+                `${items.length} items in current filtered view — exports respect active filters.`;
+            document.getElementById('exportHead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
+            document.getElementById('exportBody').innerHTML = items.map(it => `<tr>
+                <td>${esc(it.workstream)}</td><td><b>${esc(it.name)}</b></td>
+                <td>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</td>
+                <td>${it.start}</td><td>${it.type === 'milestone' ? '–' : it.end}</td>
+                <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
+                <td><span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span></td>
+                <td>${it.type === 'milestone' ? '–' : (it.progress || 0) + '%'}</td></tr>`).join('');
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  GITLAB INTEGRATION
+        //  Auth lives in its own localStorage key, deliberately outside
+        //  STORAGE_KEY so roadmap JSON exports can never contain the token.
+        // ════════════════════════════════════════════════════════════
+        const GL_AUTH_KEY = 'roadmap-gitlab-auth';
+        const GL_CACHE_KEY = 'roadmap-gitlab-cache';
+        const gl = {
+            auth: null,            // { gitlabUrl, token, groupPath }
+            epics: [],             // slim epic snapshots from last fetch
+            fetchedAt: null,
+            issuesByEpic: {},      // epicId → issue snapshots (in-memory, lazy)
+            expanded: new Set(),   // epicIds with open issue sub-row
+            loading: false,
+            error: null,
+            search: '',
+            stateFilter: 'opened'
+        };
+
+        function glLoadAuth() {
+            try { gl.auth = JSON.parse(localStorage.getItem(GL_AUTH_KEY)) || null; } catch (e) { gl.auth = null; }
+        }
+        function glSaveAuth() {
+            if (gl.auth) localStorage.setItem(GL_AUTH_KEY, JSON.stringify(gl.auth));
+            else localStorage.removeItem(GL_AUTH_KEY);
+        }
+        function glLoadCache() {
+            try {
+                const c = JSON.parse(localStorage.getItem(GL_CACHE_KEY));
+                if (c) { gl.epics = c.epics || []; gl.fetchedAt = c.fetchedAt || null; }
+            } catch (e) { /* ignore */ }
+        }
+        function glSaveCache() {
+            try {
+                localStorage.setItem(GL_CACHE_KEY, JSON.stringify({ fetchedAt: gl.fetchedAt, epics: gl.epics }));
+            } catch (e) { console.warn('GitLab cache not saved (storage full?):', e); }
+        }
+        function glConfigured() { return !!(gl.auth?.token && gl.auth?.groupPath); }
+        function glBase() { return (gl.auth?.gitlabUrl || 'https://gitlab.com').replace(/\/+$/, ''); }
+
+        async function glPaged(path, params = {}) {
+            const out = [];
+            for (let page = 1; page <= 30; page++) {
+                const u = new URL(glBase() + '/api/v4' + path);
+                Object.entries({ per_page: 100, page, ...params }).forEach(([k, v]) => u.searchParams.set(k, v));
+                const res = await fetch(u, { headers: { 'PRIVATE-TOKEN': gl.auth.token } });
+                if (!res.ok) {
+                    const why = res.status === 401 ? 'token invalid or expired'
+                        : res.status === 403 ? 'token lacks read_api scope'
+                        : res.status === 404 ? 'group not found, or epics need GitLab Premium/Ultimate'
+                        : 'HTTP ' + res.status;
+                    throw new Error(`GitLab API: ${why} (${path})`);
+                }
+                const batch = await res.json();
+                out.push(...batch);
+                if (batch.length < 100) break;
+                if (page === 30) console.warn('GitLab: stopped after 30 pages (3000 records) for', path);
+            }
+            return out;
+        }
+
+        function glEpicSnap(e) {
+            return {
+                id: e.id, iid: e.iid, groupId: e.group_id,
+                title: e.title, state: e.state,
+                startDate: e.start_date || null,
+                dueDate: e.due_date || e.end_date || null,
+                podWeeks: parsePodWeeks(e.labels),
+                labels: (e.labels || []).slice(0, 6),
+                webUrl: e.web_url,
+                reference: e.references?.full || '',
+                description: (e.description || '').slice(0, 2000)
+            };
+        }
+        function glIssueSnap(i) {
+            return {
+                id: i.id, iid: i.iid, title: i.title, state: i.state,
+                assignee: i.assignee?.name || '',
+                milestone: i.milestone?.title || '',
+                dueDate: i.due_date || null,
+                webUrl: i.web_url
+            };
+        }
+
+        function glItemFor(epicId) { return state.items.find(i => i.gitlab?.id === epicId); }
+        function glEpicById(id) { return gl.epics.find(e => e.id === id); }
+
+        // ── Sync ──
+        async function glRefresh(silent) {
+            if (!glConfigured()) { glRenderBar(); return; }
+            gl.loading = true; gl.error = null;
+            glRenderBar();
+            setStatus('Syncing GitLab…');
+            try {
+                const g = encodeURIComponent(gl.auth.groupPath);
+                const raw = await glPaged(`/groups/${g}/epics`, { state: 'all' });
+                gl.epics = raw.map(glEpicSnap);
+                gl.fetchedAt = new Date().toISOString();
+                await glSyncAssigned();
+                glSaveCache();
+                setStatus('GitLab synced ' + new Date().toLocaleTimeString('en-GB'));
+            } catch (e) {
+                gl.error = e.message + (e.name === 'TypeError' && location.protocol === 'file:'
+                    ? ' — likely CORS: this GitLab instance blocks requests from file:// pages. Open the roadmap via a local web server (e.g. npx serve) or check the instance config.'
+                    : '');
+                setStatus('GitLab sync failed');
+                if (!silent) console.error('GitLab sync failed:', e);
+            }
+            gl.loading = false;
+            glTabLabel();
+            renderAll();
+        }
+
+        async function glSyncAssigned() {
+            const linked = state.items.filter(i => i.gitlab);
+            if (!linked.length) return;
+            const byId2 = new Map(gl.epics.map(e => [e.id, e]));
+            for (const it of linked) {
+                const epic = byId2.get(it.gitlab.id);
+                if (epic) {
+                    it.gitlab.missing = false;
+                    glApplyEpic(it, epic);
+                } else {
+                    it.gitlab.missing = true; // deleted in GitLab or moved out of group — keep roadmap item
+                }
+                try {
+                    const issues = await glPaged(`/groups/${it.gitlab.groupId}/epics/${it.gitlab.iid}/issues`);
+                    it.gitlab.issues = issues.map(glIssueSnap);
+                } catch (e) { /* keep previous snapshot */ }
+                glApplyProgress(it);
+                it.gitlab.lastSync = new Date().toISOString();
+            }
+            saveState();
+        }
+
+        // GitLab owns: name, dates (if set on the epic), closed→done, progress, epic snapshot.
+        // Manual fields (pod, MoSCoW, value/effort, capacity, deps, description) are never touched.
+        function glApplyEpic(it, epic) {
+            it.name = epic.title;
+            it.gitlab.iid = epic.iid;
+            it.gitlab.groupId = epic.groupId;
+            it.gitlab.webUrl = epic.webUrl;
+            it.gitlab.epic = epic;
+            if (epic.startDate) it.start = epic.startDate.slice(0, 7);
+            if (epic.dueDate) it.end = epic.dueDate.slice(0, 7);
+            if (it.end < it.start) it.end = it.start;
+            if (epic.podWeeks != null) it.podWeeks = epic.podWeeks; // Epic Size label owns the estimate
+            if (epic.state === 'closed') it.status = 'done';
+        }
+        function glApplyProgress(it) {
+            const iss = it.gitlab?.issues || [];
+            if (it.status === 'done') { it.progress = 100; return; }
+            if (iss.length) it.progress = Math.round(iss.filter(i => i.state === 'closed').length / iss.length * 100);
+        }
+
+        // ── GitLab tab rendering ──
+        function glTabLabel() {
+            document.getElementById('glTabBtn').textContent = gl.epics.length ? `GitLab (${gl.epics.length})` : 'GitLab';
+        }
+        function glRenderBar() {
+            const bar = document.getElementById('glBar');
+            const err = document.getElementById('glError');
+            err.style.display = gl.error ? '' : 'none';
+            if (gl.error) err.textContent = gl.error;
+            if (!glConfigured()) {
+                bar.innerHTML = `<span class="gl-conn">Not connected</span>
+                    <span class="gl-meta">Configure the GitLab connection or load a GitHarmony backup JSON to browse epics.</span>
+                    <span class="gl-actions"><button class="btn btn-primary" onclick="glOpenSettings()">Connect…</button></span>`;
+                return;
+            }
+            const assigned = state.items.filter(i => i.gitlab).length;
+            bar.innerHTML = `
+                <span class="gl-conn">${esc(gl.auth.groupPath)}</span>
+                <span class="gl-meta">${esc(glBase().replace(/^https?:\/\//, ''))}</span>
+                <span class="gl-meta">${gl.loading ? '<span class="gl-spin"></span> syncing…'
+                    : gl.fetchedAt ? 'Synced ' + new Date(gl.fetchedAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })
+                    : 'not synced yet'}</span>
+                <span class="gl-meta">${assigned} epic${assigned === 1 ? '' : 's'} on roadmap</span>
+                <span class="gl-actions">
+                    <button class="export-btn" onclick="glRefresh(false)"${gl.loading ? ' disabled' : ''}>Refresh</button>
+                    <button class="export-btn" onclick="glOpenSettings()">Settings</button>
+                </span>`;
+        }
+
+        function glFilterChanged() {
+            gl.search = document.getElementById('glSearch').value.trim().toLowerCase();
+            glRenderTable();
+        }
+        function glSetStateFilter(s) {
+            gl.stateFilter = s;
+            document.querySelectorAll('#glStateSeg button').forEach(b =>
+                b.classList.toggle('active', b.dataset.glstate === s));
+            glRenderTable();
+        }
+
+        function glFilteredEpics() {
+            const onlyAssigned = document.getElementById('glOnlyAssigned').checked;
+            return gl.epics.filter(e =>
+                (gl.stateFilter === 'all' || e.state === gl.stateFilter) &&
+                (!onlyAssigned || glItemFor(e.id)) &&
+                (!gl.search || (e.title + ' ' + e.reference + ' ' + e.labels.join(' ')).toLowerCase().includes(gl.search))
+            );
+        }
+
+        function glRenderTable() {
+            const rows = glFilteredEpics();
+            document.getElementById('glCount').textContent = `${rows.length} of ${gl.epics.length} epics`;
+            document.getElementById('glBody').innerHTML = rows.map(e => {
+                const it = glItemFor(e.id);
+                const iss = it?.gitlab?.issues || gl.issuesByEpic[e.id];
+                const issTxt = iss ? `${iss.filter(i => i.state === 'closed').length}/${iss.length}` : '·· / ··';
+                const expanded = gl.expanded.has(e.id);
+                return `<tr>
+                    <td><a href="${esc(e.webUrl)}" target="_blank" rel="noopener" style="color:var(--link);text-decoration:none"><b>${esc(e.title)}</b></a>
+                        <div style="font-size:0.65rem;color:var(--medium-gray)">${esc(e.reference)}</div></td>
+                    <td><span class="badge ${e.state === 'closed' ? 'badge-done' : 'badge-success'}">${e.state === 'closed' ? 'Closed' : 'Open'}</span></td>
+                    <td>${e.startDate || '–'}</td>
+                    <td>${e.dueDate || '–'}</td>
+                    <td>${e.podWeeks != null ? `<b>${e.podWeeks} PW</b>` : '–'}</td>
+                    <td>${e.labels.map(l => `<span class="gl-label-chip">${esc(l)}</span>`).join('') || '–'}</td>
+                    <td><button class="gl-link-btn" onclick="glToggleIssues(${e.id})">${issTxt} ${expanded ? '▾' : '▸'}</button></td>
+                    <td>${it
+                        ? `<span class="badge badge-info" title="Already on roadmap">${esc(it.workstream)}</span>
+                           <button class="gl-link-btn" style="color:var(--danger);margin-left:0.35rem" onclick="glUnassign('${it.id}')">remove</button>`
+                        : `<button class="export-btn" onclick="glOpenAssign(${e.id})">→ Roadmap</button>`}</td>
+                </tr>
+                <tr id="glIssues-${e.id}" style="display:${expanded ? '' : 'none'}">
+                    <td colspan="8" class="gl-issues-cell" id="glIssuesCell-${e.id}">${expanded ? glIssueListHtml(iss) : ''}</td>
+                </tr>`;
+            }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--medium-gray);padding:2rem">
+                ${glConfigured() ? 'No epics match.' : 'Not connected.'}</td></tr>`;
+        }
+
+        function glIssueListHtml(issues) {
+            if (!issues) return '<span class="gl-spin"></span> Loading issues…';
+            if (!issues.length) return '<span style="color:var(--medium-gray)">No issues attached to this epic.</span>';
+            return issues.map(i => `<div class="gl-issue">
+                <span class="gl-dot ${i.state === 'closed' ? 'closed' : 'open'}"></span>
+                <a href="${esc(i.webUrl)}" target="_blank" rel="noopener">${esc(i.title)}</a>
+                <span class="gl-issue-meta">${esc(i.assignee)}${i.milestone ? (i.assignee ? ' · ' : '') + esc(i.milestone) : ''}${i.dueDate ? ' · due ' + i.dueDate : ''}</span>
+            </div>`).join('');
+        }
+
+        async function glToggleIssues(epicId) {
+            if (gl.expanded.has(epicId)) { gl.expanded.delete(epicId); glRenderTable(); return; }
+            gl.expanded.add(epicId);
+            glRenderTable();
+            const it = glItemFor(epicId);
+            if (!it?.gitlab?.issues && !gl.issuesByEpic[epicId]) {
+                const epic = glEpicById(epicId);
+                try {
+                    const issues = await glPaged(`/groups/${epic.groupId}/epics/${epic.iid}/issues`);
+                    gl.issuesByEpic[epicId] = issues.map(glIssueSnap);
+                } catch (e) {
+                    gl.issuesByEpic[epicId] = [];
+                    console.error('Failed to load epic issues:', e);
+                }
+                if (gl.expanded.has(epicId)) glRenderTable();
+            }
+        }
+
+        // ── Assign / unassign ──
+        let glAssignEpicId = null;
+        function glOpenAssign(epicId) {
+            const epic = glEpicById(epicId);
+            if (!epic) return;
+            glAssignEpicId = epicId;
+            const y = state.settings.year;
+            document.getElementById('glAssignTitle').textContent = epic.title;
+            document.getElementById('gaPod').value = '';
+            document.getElementById('gaStart').value = epic.startDate ? epic.startDate.slice(0, 7) : `${y}-01`;
+            document.getElementById('gaEnd').value = epic.dueDate ? epic.dueDate.slice(0, 7) : `${y}-03`;
+            document.getElementById('gaPriority').value = 'should';
+            document.getElementById('gaHint').textContent = epic.startDate || epic.dueDate
+                ? 'Dates prefilled from the GitLab epic — they stay in sync on every refresh.'
+                : 'This epic has no dates in GitLab — set the timeframe manually; it will not be overwritten.';
+            document.getElementById('glAssignOverlay').classList.add('open');
+            document.getElementById('gaPod').focus();
+        }
+        function glCloseAssign() { document.getElementById('glAssignOverlay').classList.remove('open'); glAssignEpicId = null; }
+        async function glDoAssign() {
+            const epic = glEpicById(glAssignEpicId);
+            const ws = document.getElementById('gaPod').value.trim();
+            const start = document.getElementById('gaStart').value;
+            let end = document.getElementById('gaEnd').value;
+            if (!epic || !ws || !start) { alert('Pod and start month are required.'); return; }
+            if (!end || end < start) end = start;
+            const today = new Date().toISOString().slice(0, 7);
+            const item = {
+                id: 'gl' + epic.id,
+                name: epic.title, workstream: ws, type: 'epic',
+                start, end,
+                status: epic.state === 'closed' ? 'done' : (start <= today ? 'ontrack' : 'planned'),
+                priority: document.getElementById('gaPriority').value,
+                progress: 0, value: 5, effort: 5,
+                podWeeks: epic.podWeeks ?? null,
+                capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 },
+                dependsOn: [],
+                description: (epic.description || '').split('\n').find(l => l.trim()) || '',
+                gitlab: {
+                    id: epic.id, iid: epic.iid, groupId: epic.groupId,
+                    webUrl: epic.webUrl, epic,
+                    issues: gl.issuesByEpic[epic.id] || null,
+                    lastSync: gl.fetchedAt
+                }
+            };
+            glApplyProgress(item);
+            state.items.push(item);
+            saveState(); glCloseAssign(); refreshFilterOptions(); renderAll();
+            // fetch the issue snapshot in the background if we don't have it yet
+            if (!item.gitlab.issues) {
+                try {
+                    const issues = await glPaged(`/groups/${epic.groupId}/epics/${epic.iid}/issues`);
+                    item.gitlab.issues = issues.map(glIssueSnap);
+                    glApplyProgress(item);
+                    saveState(); renderAll();
+                } catch (e) { console.error('Failed to load epic issues:', e); }
+            }
+        }
+        function glUnassign(itemId) {
+            const it = byId(itemId);
+            if (!it) return;
+            if (!confirm(`Remove "${it.name}" from the roadmap? The epic stays in GitLab.`)) return;
+            state.items = state.items.filter(i => i.id !== itemId);
+            state.items.forEach(i => i.dependsOn = (i.dependsOn || []).filter(d => d !== itemId));
+            saveState(); refreshFilterOptions(); renderAll();
+        }
+
+        // ── Settings & GitHarmony import ──
+        function glOpenSettings() {
+            document.getElementById('glUrl').value = gl.auth?.gitlabUrl || 'https://gitlab.com';
+            document.getElementById('glToken').value = gl.auth?.token || '';
+            document.getElementById('glGroup').value = gl.auth?.groupPath || '';
+            document.getElementById('glTestResult').style.display = 'none';
+            document.getElementById('glSettingsOverlay').classList.add('open');
+        }
+        function glCloseSettings() { document.getElementById('glSettingsOverlay').classList.remove('open'); }
+        function glClearAuth() {
+            if (!confirm('Remove the GitLab connection and cached epics from this browser? Roadmap items stay.')) return;
+            gl.auth = null; gl.epics = []; gl.fetchedAt = null; gl.issuesByEpic = {};
+            glSaveAuth(); localStorage.removeItem(GL_CACHE_KEY);
+            glCloseSettings(); glTabLabel(); renderAll();
+        }
+        function glReadSettingsForm() {
+            return {
+                gitlabUrl: document.getElementById('glUrl').value.trim() || 'https://gitlab.com',
+                token: document.getElementById('glToken').value.trim(),
+                groupPath: document.getElementById('glGroup').value.trim().replace(/^\/+|\/+$/g, '')
+            };
+        }
+        function glSaveSettings() {
+            const a = glReadSettingsForm();
+            if (!a.token || !a.groupPath) { alert('Token and group path are required.'); return; }
+            gl.auth = a;
+            glSaveAuth(); glCloseSettings(); glRefresh(false);
+        }
+        async function glTestConnection() {
+            const a = glReadSettingsForm();
+            const box = document.getElementById('glTestResult');
+            box.style.display = '';
+            box.innerHTML = '<span class="gl-spin"></span> Testing…';
+            const prev = gl.auth;
+            gl.auth = a;
+            try {
+                const res = await fetch(glBase() + '/api/v4/user', { headers: { 'PRIVATE-TOKEN': a.token } });
+                if (!res.ok) throw new Error(res.status === 401 ? 'Token invalid or expired' : 'HTTP ' + res.status);
+                const user = await res.json();
+                let epicMsg = '';
+                if (a.groupPath) {
+                    const er = await fetch(glBase() + `/api/v4/groups/${encodeURIComponent(a.groupPath)}/epics?per_page=1`,
+                        { headers: { 'PRIVATE-TOKEN': a.token } });
+                    epicMsg = er.ok ? ' · Epics accessible (' + (er.headers.get('x-total') || '?') + ' total)'
+                        : er.status === 404 ? ' · Group not found or no Premium license for epics'
+                        : ' · Epics: HTTP ' + er.status;
+                }
+                box.innerHTML = `<span style="color:var(--success);font-size:0.8rem">Connected as <b>${esc(user.name)}</b>${esc(epicMsg)}</span>`;
+            } catch (e) {
+                const cors = e.name === 'TypeError' && location.protocol === 'file:'
+                    ? ' — likely CORS from file://; open via a local web server.' : '';
+                box.innerHTML = `<span style="color:var(--danger);font-size:0.8rem">Failed: ${esc(e.message)}${esc(cors)}</span>`;
+            } finally {
+                gl.auth = prev;
+            }
+        }
+
+        function glImportBackup(ev) {
+            const file = ev.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const j = JSON.parse(reader.result);
+                    const cfg = j?.data?.gitlabConfig || j?.gitlabConfig || j || {};
+                    const token = cfg.gitlabToken || cfg.token || cfg.access_token || cfg.private_token || '';
+                    if (!token) throw new Error('No access token found in this file.');
+                    if (token.includes('***')) throw new Error('Token is masked — re-export the backup with "include access token" enabled.');
+                    const url = cfg.gitlabUrl || cfg.url || 'https://gitlab.com';
+                    const ag = j?.data?.activeGroup;
+                    const pg = Array.isArray(j?.data?.portfolioGroups) ? j.data.portfolioGroups[0] : null;
+                    const groupPath = cfg.groupPath
+                        || ag?.groupPath || ag?.path || ag?.full_path
+                        || pg?.groupPath || pg?.path || pg?.full_path || '';
+                    document.getElementById('glUrl').value = url;
+                    document.getElementById('glToken').value = token;
+                    document.getElementById('glGroup').value = groupPath;
+                    const box = document.getElementById('glTestResult');
+                    box.style.display = '';
+                    box.innerHTML = `<span style="color:var(--success);font-size:0.8rem">Config loaded${groupPath ? '' : ' — group path missing, enter it manually'}. Tip: delete the backup file after import, it contains your token.</span>`;
+                } catch (e) { alert('Backup import failed: ' + e.message); }
+            };
+            reader.readAsText(file);
+            ev.target.value = '';
+        }
+
+        function renderGitlab() {
+            glRenderBar();
+            glTabLabel();
+            glRenderTable();
+        }
+
+        function glInit() {
+            glLoadAuth();
+            glLoadCache();
+            glTabLabel();
+            if (glConfigured()) glRefresh(true); // background sync on every open
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  NAVIGATION & INIT
+        // ════════════════════════════════════════════════════════════
+        function initNav() {
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.addEventListener('click', () => {
+                document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.nav-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                const id = 'nav' + tab.dataset.nav.charAt(0).toUpperCase() + tab.dataset.nav.slice(1);
+                document.getElementById(id).classList.add('active');
+                renderAll();
+            }));
+        }
+
+        function initYearSelect() {
+            const sel = document.getElementById('yearSelect');
+            const cur = new Date().getFullYear();
+            const years = new Set([cur - 1, cur, cur + 1, cur + 2, state.settings.year]);
+            state.items.forEach(i => { years.add(Number(i.start.slice(0, 4))); years.add(Number(i.end.slice(0, 4))); });
+            sel.innerHTML = [...years].sort().map(y =>
+                `<option value="${y}"${y === state.settings.year ? ' selected' : ''}>${y}</option>`).join('');
+            sel.onchange = () => { state.settings.year = Number(sel.value); saveState(); renderAll(); };
+        }
+
+        function activeTab() {
+            return document.querySelector('.nav-tab.active')?.dataset.nav || 'roadmap';
+        }
+
+        function renderAll() {
+            renderKpis();
+            const tab = activeTab();
+            if (tab === 'roadmap') renderRoadmap();
+            else if (tab === 'priorities') renderMatrix();
+            else if (tab === 'capacity') renderCapacity();
+            else if (tab === 'items') renderItemsTable();
+            else if (tab === 'gitlab') renderGitlab();
+            else if (tab === 'export') renderExportPreview();
+        }
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { closeEditor(); glCloseSettings(); glCloseAssign(); }
+        });
+        window.addEventListener('resize', () => { if (activeTab() === 'roadmap') renderRoadmap(); });
+
+        loadState();
+        initNav();
+        initYearSelect();
+        refreshFilterOptions();
+        document.querySelectorAll('#granularitySeg button').forEach(b =>
+            b.classList.toggle('active', b.dataset.gran === state.settings.granularity));
+        renderAll();
+        setStatus('Ready');
+        glInit();
+    </script>
+</body>
+</html>
