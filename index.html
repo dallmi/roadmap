@@ -248,6 +248,10 @@
             position: absolute; height: 0; border-top: 2px dashed var(--medium-gray);
             opacity: 0.6; pointer-events: none; z-index: 2;
         }
+        .rm-bar.done { opacity: 0.7; }
+        .rm-bar.done .bar-name { text-decoration: line-through; text-decoration-thickness: 1px; }
+        .bar-check { color: #C9D48E; font-weight: 800; margin-right: 4px; flex: none; } /* derived light tint of RAG green for contrast on dark bars */
+        .rm-ms-label.done { text-decoration: line-through; color: var(--medium-gray); }
         .rm-bar.unplanned {
             background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.3) 0 5px, transparent 5px 11px);
         }
@@ -1370,13 +1374,13 @@
                     const left = s / 12 * 100, width = (e - s + 1) / 12 * 100;
                     const top = PAD + it._row * ROW_H;
                     const meta = STATUS_META[it.status];
-                    track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
+                    track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}${it.status === 'done' ? ' done' : ''}" data-id="${it.id}"
                         style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background-color:${meta.color};margin-left:2px;"
                         draggable="true" ondragstart="rmDragStart(event,'${it.id}')" ondragover="rmDragOver(event)"
                         ondragleave="rmDragLeave(event)" ondrop="rmDrop(event,'${it.id}')"
                         onclick="openDetails('${it.id}')">
-                        <span class="bar-name">${esc(displayName(it))}</span>
-                        ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
+                        ${it.status === 'done' ? '<span class="bar-check">✓</span>' : ''}<span class="bar-name">${esc(displayName(it))}</span>
+                        ${it.progress && it.status !== 'done' ? `<span class="bar-pct">${it.progress}%</span>` : ''}
                         <span class="bar-progress" style="width:${it.progress || 0}%"></span>
                     </div>`;
                     // baseline ghost: the originally planned span, when dates have moved since assign
@@ -1399,8 +1403,8 @@
                     const labelTop = msTop - 2 + (mi % 2 ? 17 : 0);
                     track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openDetails('${it.id}')"></div>
-                        <div class="rm-ms-label" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
-                        onclick="openDetails('${it.id}')">${esc(displayName(it))}</div>`;
+                        <div class="rm-ms-label${it.status === 'done' ? ' done' : ''}" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
+                        onclick="openDetails('${it.id}')">${it.status === 'done' ? '✓ ' : ''}${esc(displayName(it))}</div>`;
                 });
 
                 html += `<div class="rm-lane" style="min-height:${h}px">
@@ -2473,7 +2477,7 @@
                             slide.addShape('rect', { x: bx, y: by + bh - 0.035, w: bw * it.progress / 100, h: 0.035,
                                 fill: { color: C.white, transparency: 15 }, line: { type: 'none' } });
                         }
-                        const label = displayName(it) + (it.progress ? `  ${it.progress}%` : '');
+                        const label = (it.status === 'done' ? '✓ ' : '') + displayName(it) + (it.progress && it.status !== 'done' ? `  ${it.progress}%` : '');
                         slide.addText(label, { x: bx + 0.04, y: by, w: Math.max(bw - 0.08, 0.4), h: bh,
                             fontSize: barFont, bold: true, color: 'FFFFFF', valign: 'middle', fontFace: 'Arial',
                             fit: 'shrink' });
