@@ -766,7 +766,7 @@
                 <div class="form-field span2">
                     <label>Depends On</label>
                     <select id="fDeps" multiple></select>
-                    <span class="field-hint">Cmd/Ctrl-click for multiple. Dependencies are drawn as arrows on the roadmap; conflicts (successor starts before predecessor ends) turn red.</span>
+                    <span class="field-hint">Cmd/Ctrl-click for multiple. Dependencies are drawn as arrows on the roadmap; conflicts (successor starts before predecessor ends) turn red. Blocking links between GitLab epics on the roadmap are added automatically on sync.</span>
                 </div>
                 <div class="form-field span2">
                     <label>Description</label>
@@ -2444,6 +2444,7 @@
             return {
                 id: e.id, iid: e.iid, title: e.title, state: e.state,
                 podWeeks: parsePodWeeks(e.labels),
+                linkType: e.link_type || null, // related_epics only: relates_to | blocks | is_blocked_by
                 reference: e.references?.full || '',
                 webUrl: e.web_url
             };
@@ -2518,7 +2519,31 @@
                 glApplyProgress(it);
                 it.gitlab.lastSync = new Date().toISOString();
             }
+            glSyncDependencies(linked);
             saveState();
+        }
+
+        // GitLab blocking links → roadmap dependencies, for epics that are both on the roadmap.
+        // Auto-derived deps are tracked in gitlab.autoDeps so removed GitLab links clean up
+        // after themselves without ever touching manually picked dependencies.
+        function glSyncDependencies(linked) {
+            const byEpicId = new Map(linked.map(i => [i.gitlab.id, i]));
+            const desired = new Map(linked.map(i => [i.id, new Set()]));
+            linked.forEach(it => {
+                (it.gitlab.relatedEpics || []).forEach(re => {
+                    const other = byEpicId.get(re.id);
+                    if (!other || other.id === it.id) return;
+                    if (re.linkType === 'is_blocked_by') desired.get(it.id).add(other.id);
+                    else if (re.linkType === 'blocks') desired.get(other.id).add(it.id);
+                });
+            });
+            linked.forEach(it => {
+                const auto = new Set(it.gitlab.autoDeps || []);
+                const want = desired.get(it.id);
+                it.dependsOn = (it.dependsOn || []).filter(d => !(auto.has(d) && !want.has(d)));
+                want.forEach(d => { if (!it.dependsOn.includes(d)) it.dependsOn.push(d); });
+                it.gitlab.autoDeps = [...want];
+            });
         }
 
         // GitLab owns: name, dates (if set on the epic), closed→done, progress, epic snapshot.
@@ -2655,7 +2680,7 @@
                 esc(e.reference) + (e.podWeeks != null ? ' · ' + e.podWeeks + ' PW' : '')));
             const relatedEpics = (links.relatedEpics || []).map(e => glLinkRow(
                 e.state === 'closed' ? 'closed' : 'open', e.title, e.webUrl,
-                esc(e.reference) + (e.podWeeks != null ? ' · ' + e.podWeeks + ' PW' : '')));
+                esc(e.reference) + (e.linkType && e.linkType !== 'relates_to' ? ' · ' + (e.linkType === 'blocks' ? 'blocks' : 'blocked by') : '') + (e.podWeeks != null ? ' · ' + e.podWeeks + ' PW' : '')));
             const html = sec('Issues', issues) + sec('Child epics', childEpics) + sec('Related epics', relatedEpics);
             return html || '<span style="color:var(--medium-gray)">No issues, child epics or related epics attached to this epic.</span>';
         }
@@ -2734,6 +2759,7 @@
                     if (links.childEpics) item.gitlab.childEpics = links.childEpics;
                     if (links.relatedEpics) item.gitlab.relatedEpics = links.relatedEpics;
                     glApplyProgress(item);
+                    glSyncDependencies(state.items.filter(i => i.gitlab));
                     saveState(); renderAll();
                 } catch (e) { console.error('Failed to load linked items:', e); }
             }
