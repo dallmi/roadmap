@@ -244,6 +244,14 @@
             position: absolute; height: 0; border-top: 2px dashed var(--medium-gray);
             opacity: 0.6; pointer-events: none; z-index: 2;
         }
+        .rm-bar.unplanned {
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.3) 0 5px, transparent 5px 11px);
+        }
+        .rm-milestone.unplanned { border-style: dashed; }
+        .legend-swatch.striped {
+            background-color: #8E8D83;
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.4) 0 3px, transparent 3px 6px);
+        }
 
         .rm-milestone {
             position: absolute; width: 14px; height: 14px; transform: rotate(45deg);
@@ -485,6 +493,11 @@
                 <option value="epic">Initiatives</option>
                 <option value="milestone">Milestones</option>
             </select>
+            <select class="filter-select" id="fltScope" onchange="applyFilters()">
+                <option value="">All Scope</option>
+                <option value="planned">Planned</option>
+                <option value="unplanned">Unplanned</option>
+            </select>
             <input type="text" class="search-input" id="fltSearch" placeholder="Search items…" oninput="applyFilters()">
             <button class="clear-filters" onclick="clearFilters()">Clear filters</button>
             <span class="filter-count" id="filterCount"></span>
@@ -519,6 +532,7 @@
                     <span class="legend-item"><span class="legend-swatch" style="background:#404040"></span>Done</span>
                     <span class="legend-item"><span class="legend-diamond"></span>Milestone</span>
                     <span class="legend-item"><span style="width:16px;border-top:2px dashed #7A7870;display:inline-block"></span>Plan (baseline)</span>
+                    <span class="legend-item"><span class="legend-swatch striped"></span>Unplanned scope</span>
                 </div>
             </div>
             <div class="roadmap-wrap">
@@ -755,6 +769,10 @@
                     <label>Business Value (1–10)</label>
                     <input type="number" id="fValue" min="1" max="10" value="5">
                 </div>
+                <div class="form-field">
+                    <label>Scope</label>
+                    <label class="toggle-label" style="padding-top:0.5rem"><input type="checkbox" id="fUnplanned"> Additional / unplanned scope</label>
+                </div>
                 <div class="form-field" id="podWeeksField">
                     <label>Effort (Pod Weeks)</label>
                     <input type="number" id="fPodWeeks" min="0" step="0.5" placeholder="unsized">
@@ -854,6 +872,9 @@
                         <option value="should" selected>Should</option>
                         <option value="could">Could</option>
                     </select>
+                </div>
+                <div class="form-field span2">
+                    <label class="toggle-label"><input type="checkbox" id="gaUnplanned"> Additional / unplanned scope (striped on the roadmap)</label>
                 </div>
                 <div class="form-field span2">
                     <span class="field-hint" id="gaHint"></span>
@@ -1047,6 +1068,10 @@
             }
             return null;
         }
+        // GitLab labels marking scope added after planning ("Unplanned", "Scope::Unplanned", "Additional Scope" …)
+        function isUnplannedLabel(labels) {
+            return (labels || []).some(l => /unplanned|additional[\s_-]*scope/i.test(l));
+        }
         // Effort = pod weeks. Items without a size have no score (ranked last, not in the matrix).
         function score(it) {
             if (!(it.podWeeks > 0)) return null;
@@ -1123,6 +1148,7 @@
             const st = document.getElementById('fltStatus').value;
             const pr = document.getElementById('fltPriority').value;
             const ty = document.getElementById('fltType').value;
+            const sc = document.getElementById('fltScope').value;
             const q = document.getElementById('fltSearch').value.trim().toLowerCase();
             const y = state.settings.year;
             const yStart = `${y}-01`, yEnd = `${y}-12`;
@@ -1132,6 +1158,7 @@
                 (!st || it.status === st) &&
                 (!pr || it.priority === pr) &&
                 (!ty || it.type === ty) &&
+                (!sc || (sc === 'unplanned' ? !!it.unplanned : !it.unplanned)) &&
                 (!q || (it.name + ' ' + (it.description || '') + ' ' + it.workstream).toLowerCase().includes(q))
             );
         }
@@ -1150,7 +1177,7 @@
             document.getElementById('wsList').innerHTML = workstreams().map(w => `<option value="${esc(w)}">`).join('');
         }
         function clearFilters() {
-            ['fltPod','fltStatus','fltPriority','fltType'].forEach(id => document.getElementById(id).value = '');
+            ['fltPod','fltStatus','fltPriority','fltType','fltScope'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('fltSearch').value = '';
             applyFilters();
         }
@@ -1182,9 +1209,15 @@
             const pwSub = pwPeak > budget.max ? `peak ${Math.round(pwPeak * 10) / 10} PW/qtr — over budget`
                 : pwPeak >= budget.min ? `peak ${Math.round(pwPeak * 10) / 10} PW/qtr — band full`
                 : `budget ${budget.min}–${budget.max} PW per quarter`;
+            // Unplanned scope share
+            const unplanned = items.filter(i => i.unplanned);
+            const upw = Math.round(unplanned.filter(i => i.type === 'epic').reduce((s, i) => s + (i.podWeeks || 0), 0) * 10) / 10;
+            const uShare = pwYear > 0 ? upw / pwYear : 0;
             const kpis = [
                 { cls: 'highlight', label: 'Initiatives', value: epics.length, sub: `${ms.length} milestones` },
                 { cls: pwCls, label: 'Pod Weeks (Year)', value: pwYear, sub: pwSub },
+                { cls: unplanned.length ? (uShare > 0.2 ? 'danger' : 'warning') : 'success', label: 'Unplanned Scope',
+                  value: unplanned.length, sub: unplanned.length ? `${upw} PW · ${Math.round(uShare * 100)}% of pod weeks` : 'no additional scope' },
                 { cls: 'success', label: 'Avg. Progress', value: avgProg + '%', sub: `${done} done` },
                 { cls: atRisk ? 'danger' : 'success', label: 'At Risk / Delayed', value: atRisk, sub: atRisk ? 'needs management attention' : 'all on track' },
                 { cls: conflicts ? 'danger' : 'info', label: 'Dependency Conflicts', value: conflicts, sub: conflicts ? 'successor starts before predecessor ends' : 'no conflicts' },
@@ -1260,8 +1293,8 @@
                     const left = s / 12 * 100, width = (e - s + 1) / 12 * 100;
                     const top = PAD + it._row * ROW_H;
                     const meta = STATUS_META[it.status];
-                    track += `<div class="rm-bar" data-id="${it.id}"
-                        style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background:${meta.color};margin-left:2px;"
+                    track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
+                        style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background-color:${meta.color};margin-left:2px;"
                         onclick="openEditor('${it.id}')">
                         <span class="bar-name">${esc(it.name)}</span>
                         ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
@@ -1285,7 +1318,7 @@
                         ? `right:calc(${100 - center}% + 12px);text-align:right;`
                         : `left:calc(${center}% + 12px);`;
                     const labelTop = msTop - 2 + (mi % 2 ? 17 : 0);
-                    track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}" data-id="${it.id}"
+                    track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openEditor('${it.id}')"></div>
                         <div class="rm-ms-label" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
                         onclick="openEditor('${it.id}')">${esc(it.name)}</div>`;
@@ -1385,7 +1418,7 @@
                     const meta = STATUS_META[it.status];
                     const deps = (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ');
                     tt.innerHTML = `<div class="tt-title">${esc(it.name)}</div>
-                        <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}</div>
+                        <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}${it.unplanned ? ' · <b style="color:var(--warning)">Unplanned scope</b>' : ''}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
                         ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
@@ -1731,7 +1764,7 @@
             document.getElementById('itemsCount').textContent = `${rows.length} items`;
             document.getElementById('itemsBody').innerHTML = rows.map(it => `
                 <tr>
-                    <td><b>${esc(it.name)}</b>${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
+                    <td><b>${esc(it.name)}</b>${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
                     <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
                     <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
@@ -1783,6 +1816,7 @@
             document.getElementById('fProgress').value = it?.progress ?? 0;
             document.getElementById('fValue').value = it?.value ?? 5;
             document.getElementById('fPodWeeks').value = it?.podWeeks ?? '';
+            document.getElementById('fUnplanned').checked = !!it?.unplanned;
             ROLES.forEach(r => {
                 document.getElementById('fCap' + r.key.charAt(0).toUpperCase() + r.key.slice(1)).value = it?.capacity?.[r.key] ?? 0;
             });
@@ -1850,6 +1884,7 @@
                     return pw > 0 ? pw : null;
                 })(),
                 capacity,
+                unplanned: document.getElementById('fUnplanned').checked || undefined,
                 dependsOn: [...document.getElementById('fDeps').selectedOptions].map(o => o.value),
                 description: document.getElementById('fDescription').value.trim()
             };
@@ -2040,6 +2075,7 @@
                 'Type': it.type === 'milestone' ? 'Milestone' : 'Initiative',
                 'Start': it.start, 'End': it.type === 'milestone' ? it.start : it.end,
                 'Status': STATUS_META[it.status].label, 'Priority': PRIO_META[it.priority].label,
+                'Scope': it.unplanned ? 'Unplanned' : 'Planned',
                 'Progress %': it.type === 'milestone' ? '' : (it.progress || 0),
                 'Business Value': it.value,
                 'Pod Weeks': it.type === 'milestone' ? '' : (it.podWeeks ?? ''),
@@ -2085,10 +2121,11 @@
 
         function exportItemsCsv() {
             const items = filteredItems();
-            const columns = ['Pod', 'Name', 'Type', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
+            const columns = ['Pod', 'Name', 'Type', 'Scope', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
             const data = items.map(it => ({
                 Pod: it.workstream, Name: it.name,
                 Type: it.type === 'milestone' ? 'Milestone' : 'Initiative',
+                Scope: it.unplanned ? 'Unplanned' : 'Planned',
                 Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
                 Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
                 Value: it.value, PodWeeks: it.podWeeks ?? '', Score: score(it) ?? '',
@@ -2210,7 +2247,8 @@
                         const bx = gridX + s * monthW + 0.02, bw = (e - s + 1) * monthW - 0.04;
                         const by = yCur + LANE_PAD + it._row * ROW_H, bh = ROW_H - 0.07;
                         slide.addShape('roundRect', { x: bx, y: by, w: bw, h: bh, rectRadius: 0.03,
-                            fill: { color: statusFill[it.status] }, line: { type: 'none' } });
+                            fill: { color: statusFill[it.status] },
+                            line: it.unplanned ? { color: 'FFFFFF', width: 1.25, dashType: 'sysDash' } : { type: 'none' } });
                         if (it.progress > 0) {
                             slide.addShape('rect', { x: bx, y: by + bh - 0.035, w: bw * it.progress / 100, h: 0.035,
                                 fill: { color: C.white, transparency: 15 }, line: { type: 'none' } });
@@ -2278,6 +2316,10 @@
                 });
                 slide.addShape('diamond', { x: lx, y: ly + 0.02, w: 0.14, h: 0.14, fill: { color: C.red }, line: { type: 'none' } });
                 slide.addText('Milestone', { x: lx + 0.2, y: ly - 0.04, w: 1, h: 0.26, fontSize: 8, color: C.medGray, fontFace: 'Arial' });
+                lx += 1.05;
+                slide.addShape('rect', { x: lx, y: ly + 0.03, w: 0.16, h: 0.13, fill: { color: C.medGray },
+                    line: { color: 'FFFFFF', width: 1, dashType: 'sysDash' } });
+                slide.addText('Unplanned scope', { x: lx + 0.2, y: ly - 0.04, w: 1.4, h: 0.26, fontSize: 8, color: C.medGray, fontFace: 'Arial' });
             }
 
             // Portfolio overview first (all pods), then one slide per pod
@@ -2367,10 +2409,12 @@
             const ws = document.getElementById('fltPod').value;
             const st = document.getElementById('fltStatus').value;
             const pr = document.getElementById('fltPriority').value;
+            const sc = document.getElementById('fltScope').value;
             const q = document.getElementById('fltSearch').value.trim();
             if (ws) parts.push(ws);
             if (st) parts.push('Status: ' + STATUS_META[st].label);
             if (pr) parts.push('Priority: ' + PRIO_META[pr].label);
+            if (sc) parts.push(sc === 'unplanned' ? 'Unplanned scope' : 'Planned scope');
             if (q) parts.push(`Search: "${q}"`);
             return parts.length ? 'Filtered view — ' + parts.join(' · ') : '';
         }
@@ -2489,6 +2533,7 @@
                 startDate: e.start_date || null,
                 dueDate: e.due_date || e.end_date || null,
                 podWeeks: parsePodWeeks(e.labels),
+                unplanned: isUnplannedLabel(e.labels),
                 labels: (e.labels || []).slice(0, 6),
                 webUrl: e.web_url,
                 reference: e.references?.full || '',
@@ -2618,6 +2663,7 @@
             if (epic.dueDate) it.end = epic.dueDate.slice(0, 7);
             if (it.end < it.start) it.end = it.start;
             if (epic.podWeeks != null) it.podWeeks = epic.podWeeks; // Epic Size label owns the estimate
+            if (epic.unplanned) it.unplanned = true; // label sets the flag; never auto-cleared (manual override stays)
             if (epic.state === 'closed') it.status = 'done';
             // backfill: items imported before full-description support only carry the first
             // line — upgrade to the full text unless the user wrote their own description
@@ -2774,6 +2820,7 @@
             document.getElementById('gaStart').value = epic.startDate ? epic.startDate.slice(0, 7) : `${y}-01`;
             document.getElementById('gaEnd').value = epic.dueDate ? epic.dueDate.slice(0, 7) : `${y}-03`;
             document.getElementById('gaPriority').value = 'should';
+            document.getElementById('gaUnplanned').checked = !!epic.unplanned;
             document.getElementById('gaHint').textContent = epic.startDate || epic.dueDate
                 ? 'Dates prefilled from the GitLab epic — they stay in sync on every refresh.'
                 : 'This epic has no dates in GitLab — set the timeframe manually; it will not be overwritten.';
@@ -2797,6 +2844,7 @@
                 priority: document.getElementById('gaPriority').value,
                 progress: 0, value: 5,
                 podWeeks: epic.podWeeks ?? null,
+                unplanned: document.getElementById('gaUnplanned').checked || undefined,
                 capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 },
                 dependsOn: [],
                 description: (epic.description || '').trim(),
