@@ -722,14 +722,9 @@
 
             <div class="export-section">
                 <h3>Excel Export</h3>
-                <div class="hint">Workbook with Roadmap (Gantt grid), Items and Capacity sheets. In monthly mode, month columns are grouped under quarters — collapse/expand via the +/− outline buttons in Excel for more or less detail.</div>
+                <div class="hint">Workbook with Roadmap (Gantt grid), Items and Capacity sheets. Month columns are grouped under quarters — collapse/expand via the +/− outline buttons in Excel for more or less detail.</div>
                 <div class="export-controls">
-                    <div class="radio-group">
-                        <label><input type="radio" name="xlsxGran" value="monthGrouped" checked> Months grouped under quarters</label>
-                        <label><input type="radio" name="xlsxGran" value="quarter"> Quarters only</label>
-                    </div>
                     <button class="export-btn accent" onclick="exportXlsx()">Export XLSX</button>
-                    <button class="export-btn" onclick="exportItemsCsv()">Export CSV</button>
                 </div>
             </div>
 
@@ -1077,21 +1072,39 @@
         // ════════════════════════════════════════════════════════════
         //  PERSISTENCE
         // ════════════════════════════════════════════════════════════
+        // Set by a standalone snapshot HTML (see exportStandaloneHtml): when present,
+        // the embedded data always wins — the file is a faithful copy of the roadmap at
+        // export time, independent of the viewer's own localStorage.
+        let SNAPSHOT_MODE = false;
+        function migrateState() {
+            // migration: quarterly pod-week planning budget (12 weeks/quarter, 8–10 plannable)
+            if (!state.settings.podWeekBudget) state.settings.podWeekBudget = { min: 8, max: 10 };
+            // migration: effort (1–10) replaced by pod weeks
+            state.items.forEach(i => delete i.effort);
+        }
         function loadState() {
+            if (window.__ROADMAP_SNAPSHOT__) {
+                try {
+                    state = window.__ROADMAP_SNAPSHOT__;
+                    SNAPSHOT_MODE = true;
+                    migrateState();
+                    return;
+                } catch (e) { console.warn('Snapshot load failed:', e); }
+            }
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
                 if (raw) {
                     state = JSON.parse(raw);
-                    // migration: quarterly pod-week planning budget (12 weeks/quarter, 8–10 plannable)
-                    if (!state.settings.podWeekBudget) state.settings.podWeekBudget = { min: 8, max: 10 };
-                    // migration: effort (1–10) replaced by pod weeks
-                    state.items.forEach(i => delete i.effort);
+                    migrateState();
                     return;
                 }
             } catch (e) { console.warn('Failed to load saved data:', e); }
             state = sampleData();
         }
         function saveState() {
+            // A snapshot copy is not the viewer's working file — never overwrite their own
+            // saved roadmap, and the embedded data wins on reload regardless.
+            if (SNAPSHOT_MODE) { setStatus('Snapshot — changes are local & not saved'); return; }
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { console.warn(e); }
             setStatus('Saved ' + new Date().toLocaleTimeString('en-GB'));
         }
@@ -2210,7 +2223,6 @@
 
         async function exportXlsx() {
             setStatus('Building XLSX…');
-            const mode = document.querySelector('input[name="xlsxGran"]:checked').value;
             const items = filteredItems();
             const y = state.settings.year;
             const wb = new ExcelJS.Workbook();
@@ -2225,11 +2237,9 @@
             for (let q = 0; q < 4; q++) {
                 headers.push(`Q${q + 1}`);
                 colMeta.push({ type: 'q', q });
-                if (mode === 'monthGrouped') {
-                    for (let m = q * 3; m < q * 3 + 3; m++) {
-                        headers.push(MONTHS[m]);
-                        colMeta.push({ type: 'm', q, m });
-                    }
+                for (let m = q * 3; m < q * 3 + 3; m++) {
+                    headers.push(MONTHS[m]);
+                    colMeta.push({ type: 'm', q, m });
                 }
             }
             const headerRow = ws.addRow(headers);
@@ -2285,9 +2295,7 @@
                     col.outlineLevel = 1; // grouped under the quarter column to its left
                 }
             });
-            if (mode === 'monthGrouped') {
-                ws.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
-            }
+            ws.properties.outlineProperties = { summaryBelow: false, summaryRight: false };
             ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: fixedCols.length } };
 
             // Legend
@@ -2348,28 +2356,6 @@
             downloadBlob(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
                 `roadmap_${y}_${stamp()}.xlsx`);
             setStatus('XLSX exported');
-        }
-
-        function exportItemsCsv() {
-            const items = filteredItems();
-            const columns = ['Pod', 'Name', 'Alias', 'Type', 'Scope', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
-            const data = items.map(it => ({
-                Pod: it.workstream, Name: it.name, Alias: it.alias || '',
-                Type: it.type === 'milestone' ? 'Milestone' : 'Epic',
-                Scope: it.unplanned ? 'Unplanned' : 'Planned',
-                Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
-                Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
-                Value: it.value, PodWeeks: it.podWeeks ?? '', Score: score(it) ?? '',
-                DependsOn: (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join('; '),
-                Description: it.description || ''
-            }));
-            const header = columns.join(',');
-            const rows = data.map(r => columns.map(c => {
-                const v = String(r[c] ?? '');
-                return v.includes(',') || v.includes('"') || v.includes('\n') ? `"${v.replace(/"/g, '""')}"` : v;
-            }).join(','));
-            downloadBlob(new Blob([[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' }),
-                `roadmap_items_${stamp()}.csv`);
         }
 
         // ════════════════════════════════════════════════════════════
