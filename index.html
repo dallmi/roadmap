@@ -232,6 +232,10 @@
             transition: filter 0.15s, box-shadow 0.15s;
         }
         .rm-bar:hover { filter: brightness(1.08); box-shadow: 0 2px 6px rgba(0,0,0,0.25); z-index: 4; }
+        .rm-bar { cursor: grab; }
+        .rm-bar:active { cursor: grabbing; }
+        .rm-bar.drop-target { outline: 2px dashed var(--primary); outline-offset: 1px; z-index: 5; }
+        .rm-lane-track.drop-target { background: var(--surface, #ECEBE4); }
         .rm-bar .bar-name { overflow: hidden; text-overflow: ellipsis; }
         .rm-bar .bar-pct { margin-left: auto; padding-left: 6px; font-weight: 400; opacity: 0.85; font-size: 0.65rem; }
         .rm-bar .bar-progress {
@@ -1305,9 +1309,15 @@
         // ════════════════════════════════════════════════════════════
         //  ROADMAP TIMELINE
         // ════════════════════════════════════════════════════════════
-        // Greedy row packing: items into the fewest rows without horizontal overlap
+        // Manual order first (rank set via drag & drop), then chronological
+        function rankSort(a, b) {
+            return (a.rank ?? 1e9) - (b.rank ?? 1e9) || a.start.localeCompare(b.start) || b.end.localeCompare(a.end);
+        }
+
+        // Greedy row packing: items into the fewest rows without horizontal overlap.
+        // Placement order = rankSort, so manually promoted epics end up in upper rows.
         function packRows(items) {
-            const sorted = [...items].sort((a, b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
+            const sorted = [...items].sort(rankSort);
             const rows = []; // last occupied end index per row
             sorted.forEach(it => {
                 const s = clamp(ymToIdx(it.start), 0, 11);
@@ -1355,6 +1365,8 @@
                     const meta = STATUS_META[it.status];
                     track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background-color:${meta.color};margin-left:2px;"
+                        draggable="true" ondragstart="rmDragStart(event,'${it.id}')" ondragover="rmDragOver(event)"
+                        ondragleave="rmDragLeave(event)" ondrop="rmDrop(event,'${it.id}')"
                         onclick="openDetails('${it.id}')">
                         <span class="bar-name">${esc(displayName(it))}</span>
                         ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
@@ -1389,7 +1401,8 @@
                         <div class="ws-name">${esc(ws)}</div>
                         <div class="ws-meta">${bars.length} epic${bars.length === 1 ? '' : 's'}${miles.length ? ` · ${miles.length} milestone${miles.length === 1 ? '' : 's'}` : ''}</div>
                     </div>
-                    <div class="rm-lane-track" data-ws="${esc(ws)}" style="min-height:${h}px">${track}</div>
+                    <div class="rm-lane-track" data-ws="${esc(ws)}" style="min-height:${h}px"
+                        ondragover="rmDragOver(event)" ondragleave="rmDragLeave(event)" ondrop="rmLaneDrop(event,'${esc(ws)}')">${track}</div>
                 </div>`;
             });
 
@@ -1403,6 +1416,50 @@
             drawTodayLine();
             if (document.getElementById('showDeps').checked) requestAnimationFrame(drawDependencies);
             attachTooltips();
+        }
+
+        // ── Drag & drop: manual vertical ordering of epics within a pod ──
+        let rmDragId = null;
+        function rmDragStart(e, id) {
+            rmDragId = id;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id); // required by Firefox
+        }
+        function rmDragOver(e) {
+            if (!rmDragId) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drop-target');
+        }
+        function rmDragLeave(e) { e.currentTarget.classList.remove('drop-target'); }
+        function rmReorder(src, insertIdxFn) {
+            const pod = state.items.filter(i => i.workstream === src.workstream && i.type === 'epic').sort(rankSort);
+            const order = pod.filter(i => i.id !== src.id);
+            order.splice(insertIdxFn(order), 0, src);
+            order.forEach((i, n) => i.rank = n);
+            saveState();
+            renderRoadmap();
+        }
+        function rmDrop(e, targetId) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.currentTarget.classList.remove('drop-target');
+            const src = byId(rmDragId), tgt = byId(targetId);
+            rmDragId = null;
+            if (!src || !tgt || src.id === tgt.id) return;
+            if (src.workstream !== tgt.workstream) { setStatus('Reorder works within the same pod'); return; }
+            // drop on upper half = before target, lower half = after target
+            const after = e.offsetY > e.currentTarget.offsetHeight / 2;
+            rmReorder(src, order => order.findIndex(i => i.id === tgt.id) + (after ? 1 : 0));
+        }
+        function rmLaneDrop(e, ws) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drop-target');
+            const src = byId(rmDragId);
+            rmDragId = null;
+            if (!src) return;
+            if (src.workstream !== ws) { setStatus('Reorder works within the same pod'); return; }
+            rmReorder(src, order => order.length); // drop on empty lane space → bottom
         }
 
         function drawTodayLine() {
@@ -2011,8 +2068,9 @@
                 dependsOn: [...document.getElementById('fDeps').selectedOptions].map(o => o.value),
                 description: document.getElementById('fDescription').value.trim()
             };
-            const prevGl = editingId ? byId(editingId)?.gitlab : null;
-            if (prevGl) item.gitlab = prevGl;
+            const prev = editingId ? byId(editingId) : null;
+            if (prev?.gitlab) item.gitlab = prev.gitlab;
+            if (prev?.rank != null) item.rank = prev.rank;
             if (editingId) {
                 const idx = state.items.findIndex(i => i.id === editingId);
                 state.items[idx] = item;
