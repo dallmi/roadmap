@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Technology Roadmap</title>
+    <title>Elevate Corporate Comms Roadmap</title>
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
@@ -454,7 +454,7 @@
 </head>
 <body>
     <header class="header">
-        <h1>Technology Roadmap</h1>
+        <h1>Elevate Corporate Comms Roadmap</h1>
         <div class="header-controls">
             <div class="year-selector">
                 <label>Year:</label>
@@ -722,6 +722,11 @@
                 <div class="form-field span2">
                     <label>Name</label>
                     <input type="text" id="fName" placeholder="Initiative or milestone name">
+                </div>
+                <div class="form-field span2">
+                    <label>Alias (display name)</label>
+                    <input type="text" id="fAlias" placeholder="Short label for the roadmap — leave empty to use the name">
+                    <span class="field-hint">Shown on timeline bars, matrix and PPTX instead of long technical epic titles. Never overwritten by GitLab sync.</span>
                 </div>
                 <div class="form-field">
                     <label>Type</label>
@@ -1041,6 +1046,8 @@
         function idxToLabel(i) { return MONTHS[i] + ' ' + state.settings.year; }
         function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
         function byId(id) { return state.items.find(i => i.id === id); }
+        // Display name for space-constrained views (timeline, matrix, PPTX) — alias wins
+        function displayName(it) { return it.alias || it.name; }
         function ymDiff(a, b) { // months from a to b
             const [ay, am] = a.split('-').map(Number), [by, bm] = b.split('-').map(Number);
             return (by - ay) * 12 + (bm - am);
@@ -1159,7 +1166,7 @@
                 (!pr || it.priority === pr) &&
                 (!ty || it.type === ty) &&
                 (!sc || (sc === 'unplanned' ? !!it.unplanned : !it.unplanned)) &&
-                (!q || (it.name + ' ' + (it.description || '') + ' ' + it.workstream).toLowerCase().includes(q))
+                (!q || (it.name + ' ' + (it.alias || '') + ' ' + (it.description || '') + ' ' + it.workstream).toLowerCase().includes(q))
             );
         }
         function workstreams(items) {
@@ -1296,7 +1303,7 @@
                     track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background-color:${meta.color};margin-left:2px;"
                         onclick="openEditor('${it.id}')">
-                        <span class="bar-name">${esc(it.name)}</span>
+                        <span class="bar-name">${esc(displayName(it))}</span>
                         ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
                         <span class="bar-progress" style="width:${it.progress || 0}%"></span>
                     </div>`;
@@ -1321,7 +1328,7 @@
                     track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openEditor('${it.id}')"></div>
                         <div class="rm-ms-label" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
-                        onclick="openEditor('${it.id}')">${esc(it.name)}</div>`;
+                        onclick="openEditor('${it.id}')">${esc(displayName(it))}</div>`;
                 });
 
                 html += `<div class="rm-lane" style="min-height:${h}px">
@@ -1417,7 +1424,7 @@
                     if (!it) return;
                     const meta = STATUS_META[it.status];
                     const deps = (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ');
-                    tt.innerHTML = `<div class="tt-title">${esc(it.name)}</div>
+                    tt.innerHTML = `<div class="tt-title">${esc(it.name)}${it.alias ? ` <span style="font-weight:400;color:var(--medium-gray)">(${esc(it.alias)})</span>` : ''}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}${it.unplanned ? ' · <b style="color:var(--warning)">Unplanned scope</b>' : ''}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
@@ -1535,7 +1542,7 @@
                         data: epics.map(it => ({
                             x: it.podWeeks, y: it.value,
                             r: clamp(Math.sqrt(capTotal(it)) * 1.6, 6, 26),
-                            label: it.name, id: it.id
+                            label: displayName(it), id: it.id
                         })),
                         backgroundColor: epics.map(it => STATUS_META[it.status].color + 'CC'),
                         borderColor: epics.map(it => STATUS_META[it.status].color),
@@ -1764,7 +1771,7 @@
             document.getElementById('itemsCount').textContent = `${rows.length} items`;
             document.getElementById('itemsBody').innerHTML = rows.map(it => `
                 <tr>
-                    <td><b>${esc(it.name)}</b>${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
+                    <td><b>${esc(it.name)}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)">→ ${esc(it.alias)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
                     <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
                     <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
@@ -1807,6 +1814,7 @@
             document.getElementById('deleteBtn').style.display = it ? '' : 'none';
             const y = state.settings.year;
             document.getElementById('fName').value = it?.name || '';
+            document.getElementById('fAlias').value = it?.alias || '';
             document.getElementById('fType').value = it?.type || 'epic';
             document.getElementById('fPod').value = it?.workstream || '';
             document.getElementById('fStart').value = it?.start || `${y}-01`;
@@ -1873,7 +1881,8 @@
             });
             const item = {
                 id: editingId || 'i' + Date.now().toString(36),
-                name, workstream: ws, type, start, end,
+                name, alias: document.getElementById('fAlias').value.trim() || undefined,
+                workstream: ws, type, start, end,
                 status: document.getElementById('fStatus').value,
                 priority: document.getElementById('fPriority').value,
                 progress: type === 'milestone' ? 0 : clamp(Number(document.getElementById('fProgress').value) || 0, 0, 100),
@@ -2012,7 +2021,7 @@
             sorted.forEach((it, idx) => {
                 const meta = STATUS_META[it.status];
                 const s = ymToIdx(it.start), e = ymToIdx(it.end);
-                const vals = [it.workstream, it.name + (it.type === 'milestone' ? ' ◆' : ''),
+                const vals = [it.workstream, displayName(it) + (it.type === 'milestone' ? ' ◆' : ''),
                     meta.label, PRIO_META[it.priority].label,
                     it.type === 'milestone' ? '' : (it.progress || 0) + '%'];
                 colMeta.forEach(cm => {
@@ -2071,7 +2080,7 @@
 
             // ── Sheet 2: Items (data) ──
             const itemRows = items.map(it => ({
-                'Pod': it.workstream, 'Name': it.name,
+                'Pod': it.workstream, 'Name': it.name, 'Alias': it.alias || '',
                 'Type': it.type === 'milestone' ? 'Milestone' : 'Initiative',
                 'Start': it.start, 'End': it.type === 'milestone' ? it.start : it.end,
                 'Status': STATUS_META[it.status].label, 'Priority': PRIO_META[it.priority].label,
@@ -2253,7 +2262,7 @@
                             slide.addShape('rect', { x: bx, y: by + bh - 0.035, w: bw * it.progress / 100, h: 0.035,
                                 fill: { color: C.white, transparency: 15 }, line: { type: 'none' } });
                         }
-                        const label = it.name + (it.progress ? `  ${it.progress}%` : '');
+                        const label = displayName(it) + (it.progress ? `  ${it.progress}%` : '');
                         slide.addText(label, { x: bx + 0.04, y: by, w: Math.max(bw - 0.08, 0.4), h: bh,
                             fontSize: barFont, bold: true, color: 'FFFFFF', valign: 'middle', fontFace: 'Arial',
                             fit: 'shrink' });
@@ -2268,7 +2277,7 @@
                             line: { color: C.white, width: 1 } });
                         // late-year labels go left of the diamond; alternate vertically to avoid collisions
                         const lblX = s >= 10 ? cx - 2.52 : cx + 0.12;
-                        slide.addText(it.name, { x: lblX, y: msY - 0.04 + (mi % 2 ? 0.16 : 0), w: 2.4, h: 0.26,
+                        slide.addText(displayName(it), { x: lblX, y: msY - 0.04 + (mi % 2 ? 0.16 : 0), w: 2.4, h: 0.26,
                             fontSize: 8, bold: true, color: '404040', fontFace: 'Arial',
                             align: s >= 10 ? 'right' : 'left' });
                         barPositions[it.id] = { x1: cx - 0.09, x2: cx + 0.09, y: msY + 0.09 };
@@ -2324,7 +2333,7 @@
 
             // Portfolio overview first (all pods), then one slide per pod
             pages.forEach((page, pi) => drawRoadmapSlide(page,
-                `Technology Roadmap ${y}${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}`,
+                `Elevate Corporate Comms Roadmap ${y}${pages.length > 1 ? ` (${pi + 1}/${pages.length})` : ''}`,
                 filterDesc || 'Portfolio overview — all pods'));
             laneBlocks.forEach(b => drawRoadmapSlide([b], b.ws,
                 `Pod roadmap ${y}${filterDesc ? ' — ' + filterDesc : ''}`));
