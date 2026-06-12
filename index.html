@@ -389,6 +389,29 @@
         }
         .form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline: none; border-color: var(--primary); }
         .form-field textarea { resize: vertical; min-height: 56px; }
+        #fDescription { min-height: 180px; font-size: 0.8rem; line-height: 1.5; }
+
+        /* ── Epic detail view (read-first) ── */
+        .detail-meta {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.5rem 1rem; margin: 0.75rem 0; padding: 0.75rem;
+            background: var(--page-bg); border: 1px solid var(--lighter-gray); border-radius: 4px;
+        }
+        .detail-meta .dm-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.3px; color: var(--medium-gray); font-weight: 600; }
+        .detail-meta .dm-value { font-size: 0.82rem; color: var(--dark-gray); font-weight: 600; }
+        .md-body { font-size: 0.85rem; line-height: 1.6; color: var(--dark-gray); }
+        .md-body h4 { font-size: 0.85rem; font-weight: 700; color: var(--black); margin: 0.9rem 0 0.3rem; }
+        .md-body h4:first-child { margin-top: 0; }
+        .md-body p { margin: 0.4rem 0; }
+        .md-body ul, .md-body ol { margin: 0.3rem 0 0.5rem 1.25rem; }
+        .md-body li { margin: 0.15rem 0; }
+        .md-body code { background: var(--lighter-gray); padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.78rem; }
+        .md-body a { color: var(--link); }
+        .detail-section-label {
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px;
+            color: var(--medium-gray); font-weight: 600; margin: 1rem 0 0.3rem;
+            padding-top: 0.6rem; border-top: 1px solid var(--lighter-gray);
+        }
         .form-field select[multiple] { min-height: 96px; }
         .cap-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5rem; }
         .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--lighter-gray); }
@@ -813,6 +836,22 @@
                 <button class="btn btn-danger left" id="deleteBtn" style="display:none" onclick="deleteItemFromModal()">Delete</button>
                 <button class="btn btn-secondary" onclick="closeEditor()">Cancel</button>
                 <button class="btn btn-primary" onclick="saveEditor()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Epic detail modal (read-first view) ── -->
+    <div class="modal-overlay" id="detailOverlay" onclick="if(event.target===this)closeDetails()">
+        <div class="modal" style="width:760px">
+            <h2 id="detailTitle" style="margin-bottom:0.25rem"></h2>
+            <div id="detailSubtitle" style="font-size:0.75rem;color:var(--medium-gray);margin-bottom:0.5rem"></div>
+            <div id="detailBadges" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.25rem"></div>
+            <div class="detail-meta" id="detailMeta"></div>
+            <div id="detailDescription"></div>
+            <div id="detailGitlab"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeDetails()">Close</button>
+                <button class="btn btn-primary" onclick="editFromDetails()">Edit</button>
             </div>
         </div>
     </div>
@@ -1316,7 +1355,7 @@
                     const meta = STATUS_META[it.status];
                     track += `<div class="rm-bar${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
                         style="left:${left}%;width:calc(${width}% - 4px);top:${top}px;background-color:${meta.color};margin-left:2px;"
-                        onclick="openEditor('${it.id}')">
+                        onclick="openDetails('${it.id}')">
                         <span class="bar-name">${esc(displayName(it))}</span>
                         ${it.progress ? `<span class="bar-pct">${it.progress}%</span>` : ''}
                         <span class="bar-progress" style="width:${it.progress || 0}%"></span>
@@ -1340,9 +1379,9 @@
                         : `left:calc(${center}% + 12px);`;
                     const labelTop = msTop - 2 + (mi % 2 ? 17 : 0);
                     track += `<div class="rm-milestone${it.status === 'done' ? ' done' : ''}${it.unplanned ? ' unplanned' : ''}" data-id="${it.id}"
-                        style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openEditor('${it.id}')"></div>
+                        style="left:calc(${center}% - 7px);top:${msTop}px;" onclick="openDetails('${it.id}')"></div>
                         <div class="rm-ms-label" data-id="${it.id}" style="${labelPos}top:${labelTop}px;"
-                        onclick="openEditor('${it.id}')">${esc(displayName(it))}</div>`;
+                        onclick="openDetails('${it.id}')">${esc(displayName(it))}</div>`;
                 });
 
                 html += `<div class="rm-lane" style="min-height:${h}px">
@@ -1566,7 +1605,7 @@
                 },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    onClick(e, els) { if (els.length) openEditor(epics[els[0].index].id); },
+                    onClick(e, els) { if (els.length) openDetails(epics[els[0].index].id); },
                     plugins: {
                         legend: { display: false },
                         tooltip: { callbacks: { label(c) {
@@ -1602,7 +1641,7 @@
                 return dir === 'asc' ? c : -c;
             });
             document.getElementById('prioBody').innerHTML = rows.map((r, i) => `
-                <tr style="cursor:pointer" onclick="openEditor('${r.id}')">
+                <tr style="cursor:pointer" onclick="openDetails('${r.id}')">
                     <td>${i + 1}</td>
                     <td><b>${esc(r.name)}</b></td>
                     <td>${esc(r.workstream)}</td>
@@ -1786,7 +1825,7 @@
             document.getElementById('itemsCount').textContent = `${rows.length} items`;
             document.getElementById('itemsBody').innerHTML = rows.map(it => `
                 <tr>
-                    <td><b>${esc(displayName(it))}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)" title="${esc(it.name)}">${esc(it.name)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
+                    <td><b style="cursor:pointer;color:var(--link)" onclick="openDetails('${it.id}')">${esc(displayName(it))}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)" title="${esc(it.name)}">${esc(it.name)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
                     <td>${it.type === 'milestone' ? '◆ Milestone' : 'Epic'}</td>
                     <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
@@ -1818,6 +1857,66 @@
                 renderItemsTable();
             }));
         }
+
+        // ════════════════════════════════════════════════════════════
+        //  EPIC DETAIL VIEW (read-first)
+        // ════════════════════════════════════════════════════════════
+        // Minimal, safe markdown rendering for epic descriptions: escape first, then format
+        function mdToHtml(md) {
+            if (!md) return '';
+            let h = esc(md);
+            h = h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+            h = h.replace(/^#{1,6}\s*(.+)$/gm, '<h4>$1</h4>');
+            h = h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+            h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+            h = h.replace(/(^|\n)((?:[-*]\s+.*(?:\n|$))+)/g, (m, pre, block) =>
+                pre + '<ul>' + block.trim().split('\n').map(l => '<li>' + l.replace(/^[-*]\s+/, '') + '</li>').join('') + '</ul>');
+            h = h.replace(/(^|\n)((?:\d+\.\s+.*(?:\n|$))+)/g, (m, pre, block) =>
+                pre + '<ol>' + block.trim().split('\n').map(l => '<li>' + l.replace(/^\d+\.\s+/, '') + '</li>').join('') + '</ol>');
+            return h.split(/\n{2,}/).map(p =>
+                /^\s*<(h4|ul|ol)/.test(p) ? p : '<p>' + p.trim().replace(/\n/g, '<br>') + '</p>').join('');
+        }
+
+        let detailsId = null;
+        function openDetails(id) {
+            const it = byId(id);
+            if (!it) return;
+            detailsId = id;
+            document.getElementById('detailTitle').textContent = displayName(it);
+            document.getElementById('detailSubtitle').textContent = it.alias ? it.name : '';
+            const d = slipMonths(it);
+            document.getElementById('detailBadges').innerHTML = `
+                <span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span>
+                <span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span>
+                ${it.type === 'milestone' ? '<span class="badge badge-neutral">Milestone</span>' : ''}
+                ${it.unplanned ? '<span class="badge badge-warning">Unplanned scope</span>' : ''}
+                ${it.gitlab?.missing ? '<span class="badge badge-danger">Not found in GitLab</span>' : ''}`;
+            const meta = [
+                ['Pod', esc(it.workstream)],
+                ['Timeline', it.type === 'milestone' ? it.start : `${it.start} → ${it.end}`],
+                it.gitlab?.baseline ? ['Plan (baseline)', `${it.gitlab.baseline.start} → ${it.gitlab.baseline.end}${d != null ? ` <span style="color:var(--${d > 0 ? 'danger' : 'success'})">(${d > 0 ? '+' : ''}${d}M)</span>` : ''}`] : null,
+                it.type === 'epic' ? ['Size', it.podWeeks > 0 ? it.podWeeks + ' Pod Weeks' : 'unsized'] : null,
+                it.type === 'epic' ? ['Progress', (it.progress || 0) + '%'] : null,
+                it.type === 'epic' ? ['Business Value', it.value + ' / 10'] : null,
+                (it.dependsOn || []).length ? ['Depends on', (it.dependsOn || []).map(x => esc(displayName(byId(x) || {}) || '')).filter(Boolean).join(', ')] : null
+            ].filter(Boolean);
+            document.getElementById('detailMeta').innerHTML = meta.map(([l, v]) =>
+                `<div><div class="dm-label">${l}</div><div class="dm-value">${v}</div></div>`).join('');
+            document.getElementById('detailDescription').innerHTML = it.description
+                ? `<div class="md-body">${mdToHtml(it.description)}</div>`
+                : '<div style="color:var(--medium-gray);font-size:0.8rem">No description.</div>';
+            const gi = it.gitlab;
+            document.getElementById('detailGitlab').innerHTML = gi ? `
+                <div class="detail-section-label">GitLab</div>
+                <div style="font-size:0.78rem;margin-bottom:0.4rem">
+                    <a href="${esc(gi.webUrl)}" target="_blank" rel="noopener" style="color:var(--link);font-weight:600">${esc(gi.epic?.reference || 'Open epic in GitLab')}</a>
+                    <span style="color:var(--medium-gray);font-size:0.68rem;margin-left:0.5rem">${gi.lastSync ? 'synced ' + new Date(gi.lastSync).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                </div>
+                ${glLinksHtml({ issues: gi.issues || [], childEpics: gi.childEpics, relatedEpics: gi.relatedEpics })}` : '';
+            document.getElementById('detailOverlay').classList.add('open');
+        }
+        function closeDetails() { document.getElementById('detailOverlay').classList.remove('open'); detailsId = null; }
+        function editFromDetails() { const id = detailsId; closeDetails(); openEditor(id); }
 
         // ════════════════════════════════════════════════════════════
         //  ITEM EDITOR
@@ -2500,6 +2599,7 @@
             epics: [],             // slim epic snapshots from last fetch
             fetchedAt: null,
             linksByEpic: {},       // epicId → { issues, childEpics, relatedEpics } (in-memory, lazy)
+            issueCounts: null,     // epicId → { open, closed } from one group-issues sweep (null = not loaded)
             expanded: new Set(),   // epicIds with open issue sub-row
             loading: false,
             error: null,
@@ -2517,14 +2617,14 @@
         function glLoadCache() {
             try {
                 const c = JSON.parse(localStorage.getItem(GL_CACHE_KEY));
-                if (c) { gl.epics = c.epics || []; gl.fetchedAt = c.fetchedAt || null; }
+                if (c) { gl.epics = c.epics || []; gl.fetchedAt = c.fetchedAt || null; gl.issueCounts = c.issueCounts || null; }
             } catch (e) { /* ignore */ }
         }
         function glSaveCache() {
             try {
                 // descriptions can be long and are only needed at assign time (in-memory) — keep the cache small
                 const slim = gl.epics.map(({ description, ...rest }) => rest);
-                localStorage.setItem(GL_CACHE_KEY, JSON.stringify({ fetchedAt: gl.fetchedAt, epics: slim }));
+                localStorage.setItem(GL_CACHE_KEY, JSON.stringify({ fetchedAt: gl.fetchedAt, epics: slim, issueCounts: gl.issueCounts }));
             } catch (e) { console.warn('GitLab cache not saved (storage full?):', e); }
         }
         function glConfigured() { return !!(gl.auth?.token && gl.auth?.groupPath); }
@@ -2562,8 +2662,22 @@
                 labels: (e.labels || []).slice(0, 6),
                 webUrl: e.web_url,
                 reference: e.references?.full || '',
+                parentId: e.parent_id || null,
                 description: (e.description || '').slice(0, 8000)
             };
+        }
+        // One paginated sweep over all group issues → closed/total per epic id.
+        // Much cheaper than per-epic requests when the group holds hundreds of epics.
+        async function glFetchIssueCounts() {
+            const g = encodeURIComponent(gl.auth.groupPath);
+            const issues = await glPaged(`/groups/${g}/issues`, { scope: 'all' });
+            const counts = {};
+            issues.forEach(i => {
+                if (!i.epic?.id) return;
+                const c = counts[i.epic.id] || (counts[i.epic.id] = { open: 0, closed: 0 });
+                i.state === 'closed' ? c.closed++ : c.open++;
+            });
+            gl.issueCounts = counts;
         }
         function glChildSnap(e) {
             return {
@@ -2608,6 +2722,7 @@
                 const raw = await glPaged(`/groups/${g}/epics`, { state: 'all' });
                 gl.epics = raw.map(glEpicSnap);
                 gl.fetchedAt = new Date().toISOString();
+                try { await glFetchIssueCounts(); } catch (e) { console.warn('Issue counts unavailable:', e); }
                 await glSyncAssigned();
                 glSaveCache();
                 setStatus('GitLab synced ' + new Date().toLocaleTimeString('en-GB'));
@@ -2762,12 +2877,19 @@
         function glRenderTable() {
             const rows = glFilteredEpics();
             document.getElementById('glCount').textContent = `${rows.length} of ${gl.epics.length} epics`;
+            // sub-epic counts derived from the already-loaded epic list (parent_id)
+            const childCount = {};
+            gl.epics.forEach(e => { if (e.parentId) childCount[e.parentId] = (childCount[e.parentId] || 0) + 1; });
             document.getElementById('glBody').innerHTML = rows.map(e => {
                 const it = glItemFor(e.id);
                 const links = glLinksFor(e.id);
                 const iss = links?.issues;
-                const nEpics = (links?.childEpics?.length || 0) + (links?.relatedEpics?.length || 0);
-                const issTxt = (iss ? `${iss.filter(i => i.state === 'closed').length}/${iss.length}` : '·· / ··')
+                // exact snapshot (assigned/expanded) wins; otherwise the group-wide sweep counts
+                const sweep = gl.issueCounts ? (gl.issueCounts[e.id] || { open: 0, closed: 0 }) : null;
+                const counts = iss ? { closed: iss.filter(i => i.state === 'closed').length, total: iss.length }
+                    : sweep ? { closed: sweep.closed, total: sweep.open + sweep.closed } : null;
+                const nEpics = links ? (links.childEpics?.length || 0) + (links.relatedEpics?.length || 0) : (childCount[e.id] || 0);
+                const issTxt = (counts ? `${counts.closed}/${counts.total}` : '·· / ··')
                     + (nEpics ? ` · +${nEpics} epic${nEpics === 1 ? '' : 's'}` : '');
                 const expanded = gl.expanded.has(e.id);
                 return `<tr>
@@ -3047,7 +3169,7 @@
         }
 
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') { closeEditor(); glCloseSettings(); glCloseAssign(); }
+            if (e.key === 'Escape') { closeEditor(); glCloseSettings(); glCloseAssign(); closeDetails(); }
         });
         window.addEventListener('resize', () => { if (activeTab() === 'roadmap') renderRoadmap(); });
 
