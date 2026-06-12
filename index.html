@@ -1360,7 +1360,7 @@
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
                         ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
                         ${it.gitlab ? `<div class="tt-row">GitLab: <b>${(it.gitlab.issues || []).filter(i => i.state === 'closed').length}/${(it.gitlab.issues || []).length} issues closed</b>${it.gitlab.missing ? ' · <b style="color:var(--danger)">epic missing</b>' : ''}</div>` : ''}
-                        ${it.description ? `<div class="tt-row" style="margin-top:0.25rem">${esc(it.description)}</div>` : ''}`;
+                        ${it.description ? `<div class="tt-row" style="margin-top:0.25rem">${esc(it.description.length > 260 ? it.description.slice(0, 260) + '…' : it.description)}</div>` : ''}`;
                     tt.style.display = 'block';
                     const x = Math.min(e.clientX + 14, window.innerWidth - 340);
                     tt.style.left = x + 'px';
@@ -1764,7 +1764,7 @@
                         <button class="gl-link-btn" style="margin-left:auto;color:var(--danger)" onclick="glUnlinkFromEditor()">Unlink</button>
                     </div>
                     ${iss.length ? `<div style="font-size:0.7rem;color:var(--medium-gray);margin-bottom:0.25rem">${closed}/${iss.length} issues closed</div>` : ''}
-                    ${glIssueListHtml(gi.issues)}`;
+                    ${glLinksHtml({ issues: gi.issues || [], childEpics: gi.childEpics, relatedEpics: gi.relatedEpics })}`;
             }
             onTypeChange();
             document.getElementById('modalOverlay').classList.add('open');
@@ -2375,7 +2375,7 @@
             auth: null,            // { gitlabUrl, token, groupPath }
             epics: [],             // slim epic snapshots from last fetch
             fetchedAt: null,
-            issuesByEpic: {},      // epicId → issue snapshots (in-memory, lazy)
+            linksByEpic: {},       // epicId → { issues, childEpics, relatedEpics } (in-memory, lazy)
             expanded: new Set(),   // epicIds with open issue sub-row
             loading: false,
             error: null,
@@ -2398,7 +2398,9 @@
         }
         function glSaveCache() {
             try {
-                localStorage.setItem(GL_CACHE_KEY, JSON.stringify({ fetchedAt: gl.fetchedAt, epics: gl.epics }));
+                // descriptions can be long and are only needed at assign time (in-memory) — keep the cache small
+                const slim = gl.epics.map(({ description, ...rest }) => rest);
+                localStorage.setItem(GL_CACHE_KEY, JSON.stringify({ fetchedAt: gl.fetchedAt, epics: slim }));
             } catch (e) { console.warn('GitLab cache not saved (storage full?):', e); }
         }
         function glConfigured() { return !!(gl.auth?.token && gl.auth?.groupPath); }
@@ -2435,8 +2437,26 @@
                 labels: (e.labels || []).slice(0, 6),
                 webUrl: e.web_url,
                 reference: e.references?.full || '',
-                description: (e.description || '').slice(0, 2000)
+                description: (e.description || '').slice(0, 8000)
             };
+        }
+        function glChildSnap(e) {
+            return {
+                id: e.id, iid: e.iid, title: e.title, state: e.state,
+                podWeeks: parsePodWeeks(e.labels),
+                reference: e.references?.full || '',
+                webUrl: e.web_url
+            };
+        }
+        // Everything attached to an epic: issues, child epics, related (linked) epics.
+        // Each endpoint tolerated individually — related_epics needs newer GitLab, child epics need Premium.
+        async function glFetchEpicLinks(groupId, iid) {
+            const [issues, childEpics, relatedEpics] = await Promise.all([
+                glPaged(`/groups/${groupId}/epics/${iid}/issues`).then(r => r.map(glIssueSnap)).catch(() => null),
+                glPaged(`/groups/${groupId}/epics/${iid}/epics`).then(r => r.map(glChildSnap)).catch(() => null),
+                glPaged(`/groups/${groupId}/epics/${iid}/related_epics`).then(r => r.map(glChildSnap)).catch(() => null)
+            ]);
+            return { issues, childEpics, relatedEpics };
         }
         function glIssueSnap(i) {
             return {
@@ -2490,8 +2510,10 @@
                     it.gitlab.missing = true; // deleted in GitLab or moved out of group — keep roadmap item
                 }
                 try {
-                    const issues = await glPaged(`/groups/${it.gitlab.groupId}/epics/${it.gitlab.iid}/issues`);
-                    it.gitlab.issues = issues.map(glIssueSnap);
+                    const links = await glFetchEpicLinks(it.gitlab.groupId, it.gitlab.iid);
+                    if (links.issues) it.gitlab.issues = links.issues;
+                    if (links.childEpics) it.gitlab.childEpics = links.childEpics;
+                    if (links.relatedEpics) it.gitlab.relatedEpics = links.relatedEpics;
                 } catch (e) { /* keep previous snapshot */ }
                 glApplyProgress(it);
                 it.gitlab.lastSync = new Date().toISOString();
@@ -2568,13 +2590,24 @@
             );
         }
 
+        function glLinksFor(epicId) {
+            const it = glItemFor(epicId);
+            if (it?.gitlab?.issues || it?.gitlab?.childEpics || it?.gitlab?.relatedEpics) {
+                return { issues: it.gitlab.issues, childEpics: it.gitlab.childEpics, relatedEpics: it.gitlab.relatedEpics };
+            }
+            return gl.linksByEpic[epicId] || null;
+        }
+
         function glRenderTable() {
             const rows = glFilteredEpics();
             document.getElementById('glCount').textContent = `${rows.length} of ${gl.epics.length} epics`;
             document.getElementById('glBody').innerHTML = rows.map(e => {
                 const it = glItemFor(e.id);
-                const iss = it?.gitlab?.issues || gl.issuesByEpic[e.id];
-                const issTxt = iss ? `${iss.filter(i => i.state === 'closed').length}/${iss.length}` : '·· / ··';
+                const links = glLinksFor(e.id);
+                const iss = links?.issues;
+                const nEpics = (links?.childEpics?.length || 0) + (links?.relatedEpics?.length || 0);
+                const issTxt = (iss ? `${iss.filter(i => i.state === 'closed').length}/${iss.length}` : '·· / ··')
+                    + (nEpics ? ` · +${nEpics} epic${nEpics === 1 ? '' : 's'}` : '');
                 const expanded = gl.expanded.has(e.id);
                 return `<tr>
                     <td><a href="${esc(e.webUrl)}" target="_blank" rel="noopener" style="color:var(--link);text-decoration:none"><b>${esc(e.title)}</b></a>
@@ -2591,35 +2624,48 @@
                         : `<button class="export-btn" onclick="glOpenAssign(${e.id})">→ Roadmap</button>`}</td>
                 </tr>
                 <tr id="glIssues-${e.id}" style="display:${expanded ? '' : 'none'}">
-                    <td colspan="8" class="gl-issues-cell" id="glIssuesCell-${e.id}">${expanded ? glIssueListHtml(iss) : ''}</td>
+                    <td colspan="8" class="gl-issues-cell" id="glIssuesCell-${e.id}">${expanded ? glLinksHtml(links) : ''}</td>
                 </tr>`;
             }).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--medium-gray);padding:2rem">
                 ${glConfigured() ? 'No epics match.' : 'Not connected.'}</td></tr>`;
         }
 
-        function glIssueListHtml(issues) {
-            if (!issues) return '<span class="gl-spin"></span> Loading issues…';
-            if (!issues.length) return '<span style="color:var(--medium-gray)">No issues attached to this epic.</span>';
-            return issues.map(i => `<div class="gl-issue">
-                <span class="gl-dot ${i.state === 'closed' ? 'closed' : 'open'}"></span>
-                <a href="${esc(i.webUrl)}" target="_blank" rel="noopener">${esc(i.title)}</a>
-                <span class="gl-issue-meta">${esc(i.assignee)}${i.milestone ? (i.assignee ? ' · ' : '') + esc(i.milestone) : ''}${i.dueDate ? ' · due ' + i.dueDate : ''}</span>
-            </div>`).join('');
+        function glLinkRow(dot, title, url, meta) {
+            return `<div class="gl-issue">
+                <span class="gl-dot ${dot}"></span>
+                <a href="${esc(url)}" target="_blank" rel="noopener">${esc(title)}</a>
+                <span class="gl-issue-meta">${meta}</span>
+            </div>`;
+        }
+        function glLinksHtml(links) {
+            if (!links) return '<span class="gl-spin"></span> Loading linked items…';
+            const sec = (label, rows) => rows?.length
+                ? `<div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;color:var(--medium-gray);margin:0.4rem 0 0.1rem">${label} (${rows.length})</div>${rows.join('')}`
+                : '';
+            const issues = (links.issues || []).map(i => glLinkRow(
+                i.state === 'closed' ? 'closed' : 'open', i.title, i.webUrl,
+                esc(i.assignee) + (i.milestone ? (i.assignee ? ' · ' : '') + esc(i.milestone) : '') + (i.dueDate ? ' · due ' + i.dueDate : '')));
+            const childEpics = (links.childEpics || []).map(e => glLinkRow(
+                e.state === 'closed' ? 'closed' : 'open', e.title, e.webUrl,
+                esc(e.reference) + (e.podWeeks != null ? ' · ' + e.podWeeks + ' PW' : '')));
+            const relatedEpics = (links.relatedEpics || []).map(e => glLinkRow(
+                e.state === 'closed' ? 'closed' : 'open', e.title, e.webUrl,
+                esc(e.reference) + (e.podWeeks != null ? ' · ' + e.podWeeks + ' PW' : '')));
+            const html = sec('Issues', issues) + sec('Child epics', childEpics) + sec('Related epics', relatedEpics);
+            return html || '<span style="color:var(--medium-gray)">No issues, child epics or related epics attached to this epic.</span>';
         }
 
         async function glToggleIssues(epicId) {
             if (gl.expanded.has(epicId)) { gl.expanded.delete(epicId); glRenderTable(); return; }
             gl.expanded.add(epicId);
             glRenderTable();
-            const it = glItemFor(epicId);
-            if (!it?.gitlab?.issues && !gl.issuesByEpic[epicId]) {
+            if (!glLinksFor(epicId)) {
                 const epic = glEpicById(epicId);
                 try {
-                    const issues = await glPaged(`/groups/${epic.groupId}/epics/${epic.iid}/issues`);
-                    gl.issuesByEpic[epicId] = issues.map(glIssueSnap);
+                    gl.linksByEpic[epicId] = await glFetchEpicLinks(epic.groupId, epic.iid);
                 } catch (e) {
-                    gl.issuesByEpic[epicId] = [];
-                    console.error('Failed to load epic issues:', e);
+                    gl.linksByEpic[epicId] = { issues: [], childEpics: [], relatedEpics: [] };
+                    console.error('Failed to load linked items:', e);
                 }
                 if (gl.expanded.has(epicId)) glRenderTable();
             }
@@ -2662,25 +2708,29 @@
                 podWeeks: epic.podWeeks ?? null,
                 capacity: { dev: 0, ba: 0, qa: 0, sre: 0, sm: 0 },
                 dependsOn: [],
-                description: (epic.description || '').split('\n').find(l => l.trim()) || '',
+                description: (epic.description || '').trim(),
                 gitlab: {
                     id: epic.id, iid: epic.iid, groupId: epic.groupId,
                     webUrl: epic.webUrl, epic,
-                    issues: gl.issuesByEpic[epic.id] || null,
+                    issues: gl.linksByEpic[epic.id]?.issues || null,
+                    childEpics: gl.linksByEpic[epic.id]?.childEpics || null,
+                    relatedEpics: gl.linksByEpic[epic.id]?.relatedEpics || null,
                     lastSync: gl.fetchedAt
                 }
             };
             glApplyProgress(item);
             state.items.push(item);
             saveState(); glCloseAssign(); refreshFilterOptions(); renderAll();
-            // fetch the issue snapshot in the background if we don't have it yet
+            // fetch issues + child/related epics in the background if we don't have them yet
             if (!item.gitlab.issues) {
                 try {
-                    const issues = await glPaged(`/groups/${epic.groupId}/epics/${epic.iid}/issues`);
-                    item.gitlab.issues = issues.map(glIssueSnap);
+                    const links = await glFetchEpicLinks(epic.groupId, epic.iid);
+                    if (links.issues) item.gitlab.issues = links.issues;
+                    if (links.childEpics) item.gitlab.childEpics = links.childEpics;
+                    if (links.relatedEpics) item.gitlab.relatedEpics = links.relatedEpics;
                     glApplyProgress(item);
                     saveState(); renderAll();
-                } catch (e) { console.error('Failed to load epic issues:', e); }
+                } catch (e) { console.error('Failed to load linked items:', e); }
             }
         }
         function glUnassign(itemId) {
@@ -2703,7 +2753,7 @@
         function glCloseSettings() { document.getElementById('glSettingsOverlay').classList.remove('open'); }
         function glClearAuth() {
             if (!confirm('Remove the GitLab connection and cached epics from this browser? Roadmap items stay.')) return;
-            gl.auth = null; gl.epics = []; gl.fetchedAt = null; gl.issuesByEpic = {};
+            gl.auth = null; gl.epics = []; gl.fetchedAt = null; gl.linksByEpic = {};
             glSaveAuth(); localStorage.removeItem(GL_CACHE_KEY);
             glCloseSettings(); glTabLabel(); renderAll();
         }
