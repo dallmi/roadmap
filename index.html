@@ -2534,6 +2534,11 @@
             if (it.end < it.start) it.end = it.start;
             if (epic.podWeeks != null) it.podWeeks = epic.podWeeks; // Epic Size label owns the estimate
             if (epic.state === 'closed') it.status = 'done';
+            // backfill: items imported before full-description support only carry the first
+            // line — upgrade to the full text unless the user wrote their own description
+            const fullDesc = (epic.description || '').trim();
+            const firstLine = (fullDesc.split('\n').find(l => l.trim()) || '').trim();
+            if (fullDesc && (!it.description || it.description.trim() === firstLine)) it.description = fullDesc;
         }
         function glApplyProgress(it) {
             const iss = it.gitlab?.issues || [];
