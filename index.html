@@ -166,12 +166,12 @@
 
         /* ── Roadmap timeline ── */
         .rm-toolbar { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
-        .rm-toolbar .seg { display: flex; border: 1px solid var(--light-gray); border-radius: 4px; overflow: hidden; }
-        .rm-toolbar .seg button {
+        .seg { display: flex; border: 1px solid var(--light-gray); border-radius: 4px; overflow: hidden; }
+        .seg button {
             padding: 0.35rem 0.75rem; font-size: 0.75rem; border: none; background: var(--white);
             cursor: pointer; color: var(--medium-gray); font-weight: 500;
         }
-        .rm-toolbar .seg button.active { background: var(--dark-gray); color: var(--white); }
+        .seg button.active { background: var(--dark-gray); color: var(--white); }
         .rm-toolbar .toggle-label { display: flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; color: var(--medium-gray); cursor: pointer; user-select: none; }
 
         .legend { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-left: auto; }
@@ -490,7 +490,7 @@
             </select>
             <select class="filter-select" id="fltType" onchange="applyFilters()">
                 <option value="">All Types</option>
-                <option value="epic">Initiatives</option>
+                <option value="epic">Epics</option>
                 <option value="milestone">Milestones</option>
             </select>
             <select class="filter-select" id="fltScope" onchange="applyFilters()">
@@ -498,6 +498,12 @@
                 <option value="planned">Planned</option>
                 <option value="unplanned">Unplanned</option>
             </select>
+            <div class="seg" id="fltQuarters" title="Show items active in the selected quarter(s)">
+                <button data-q="0" onclick="toggleQuarterFilter(0)">Q1</button>
+                <button data-q="1" onclick="toggleQuarterFilter(1)">Q2</button>
+                <button data-q="2" onclick="toggleQuarterFilter(2)">Q3</button>
+                <button data-q="3" onclick="toggleQuarterFilter(3)">Q4</button>
+            </div>
             <input type="text" class="search-input" id="fltSearch" placeholder="Search items…" oninput="applyFilters()">
             <button class="clear-filters" onclick="clearFilters()">Clear filters</button>
             <span class="filter-count" id="filterCount"></span>
@@ -519,10 +525,6 @@
         <!-- ── Roadmap tab ── -->
         <div class="nav-content active" id="navRoadmap">
             <div class="rm-toolbar">
-                <div class="seg" id="granularitySeg">
-                    <button data-gran="quarter" onclick="setGranularity('quarter')">Quarters</button>
-                    <button data-gran="month" class="active" onclick="setGranularity('month')">Quarters + Months</button>
-                </div>
                 <label class="toggle-label"><input type="checkbox" id="showDeps" checked onchange="renderRoadmap()"> Show dependencies</label>
                 <div class="legend">
                     <span class="legend-item"><span class="legend-swatch" style="background:#B8B3A2"></span>Planned</span>
@@ -553,14 +555,14 @@
             </div>
             <div class="chart-card">
                 <div class="chart-title">Priority Ranking
-                    <span class="chart-subtitle">Score = Business Value ÷ Pod Weeks, weighted by MoSCoW priority — unsized initiatives rank last without a score</span>
+                    <span class="chart-subtitle">Score = Business Value ÷ Pod Weeks, weighted by MoSCoW priority — unsized epics rank last without a score</span>
                 </div>
                 <div class="table-container">
                     <table id="prioTable">
                         <thead>
                             <tr>
                                 <th class="sort-header" data-col="rank">#</th>
-                                <th class="sort-header" data-col="name">Initiative</th>
+                                <th class="sort-header" data-col="name">Epic</th>
                                 <th class="sort-header" data-col="workstream">Pod</th>
                                 <th class="sort-header" data-col="priority">Priority</th>
                                 <th class="sort-header text-right" data-col="value">Value</th>
@@ -583,7 +585,7 @@
             <div class="charts-grid">
                 <div class="chart-card full-width">
                     <div class="chart-title">Pod Weeks vs. Quarter Budget
-                        <span class="chart-subtitle">Epic Size estimates spread over each initiative's months — 12 weeks per quarter, plan 8–10, the rest covers absences</span>
+                        <span class="chart-subtitle">Epic Size estimates spread over each epic's months — 12 weeks per quarter, plan 8–10, the rest covers absences</span>
                     </div>
                     <div class="chart-container"><canvas id="podWeeksChart"></canvas></div>
                 </div>
@@ -721,7 +723,7 @@
             <div class="form-grid">
                 <div class="form-field span2">
                     <label>Name</label>
-                    <input type="text" id="fName" placeholder="Initiative or milestone name">
+                    <input type="text" id="fName" placeholder="Epic or milestone name">
                 </div>
                 <div class="form-field span2">
                     <label>Alias (display name)</label>
@@ -731,7 +733,7 @@
                 <div class="form-field">
                     <label>Type</label>
                     <select id="fType" onchange="onTypeChange()">
-                        <option value="epic">Initiative</option>
+                        <option value="epic">Epic</option>
                         <option value="milestone">Milestone</option>
                     </select>
                 </div>
@@ -1149,6 +1151,24 @@
         }
         function stamp() { return new Date().toISOString().slice(0, 10); }
 
+        // Quarter filter: empty set = all quarters
+        const quarterFilter = new Set();
+        function toggleQuarterFilter(qi) {
+            quarterFilter.has(qi) ? quarterFilter.delete(qi) : quarterFilter.add(qi);
+            document.querySelectorAll('#fltQuarters button').forEach(b =>
+                b.classList.toggle('active', quarterFilter.has(Number(b.dataset.q))));
+            applyFilters();
+        }
+        function inSelectedQuarters(it) {
+            if (!quarterFilter.size) return true;
+            const y = state.settings.year;
+            return [...quarterFilter].some(qi => {
+                const qStart = `${y}-${String(qi * 3 + 1).padStart(2, '0')}`;
+                const qEnd = `${y}-${String(qi * 3 + 3).padStart(2, '0')}`;
+                return it.start <= qEnd && it.end >= qStart;
+            });
+        }
+
         // Items visible in the displayed year and matching active filters
         function filteredItems() {
             const ws = document.getElementById('fltPod').value;
@@ -1166,6 +1186,7 @@
                 (!pr || it.priority === pr) &&
                 (!ty || it.type === ty) &&
                 (!sc || (sc === 'unplanned' ? !!it.unplanned : !it.unplanned)) &&
+                inSelectedQuarters(it) &&
                 (!q || (it.name + ' ' + (it.alias || '') + ' ' + (it.description || '') + ' ' + it.workstream).toLowerCase().includes(q))
             );
         }
@@ -1186,6 +1207,8 @@
         function clearFilters() {
             ['fltPod','fltStatus','fltPriority','fltType','fltScope'].forEach(id => document.getElementById(id).value = '');
             document.getElementById('fltSearch').value = '';
+            quarterFilter.clear();
+            document.querySelectorAll('#fltQuarters button').forEach(b => b.classList.remove('active'));
             applyFilters();
         }
         function applyFilters() { renderAll(); }
@@ -1221,7 +1244,7 @@
             const upw = Math.round(unplanned.filter(i => i.type === 'epic').reduce((s, i) => s + (i.podWeeks || 0), 0) * 10) / 10;
             const uShare = pwYear > 0 ? upw / pwYear : 0;
             const kpis = [
-                { cls: 'highlight', label: 'Initiatives', value: epics.length, sub: `${ms.length} milestones` },
+                { cls: 'highlight', label: 'Epics', value: epics.length, sub: `${ms.length} milestones` },
                 { cls: pwCls, label: 'Pod Weeks (Year)', value: pwYear, sub: pwSub },
                 { cls: unplanned.length ? (uShare > 0.2 ? 'danger' : 'warning') : 'success', label: 'Unplanned Scope',
                   value: unplanned.length, sub: unplanned.length ? `${upw} PW · ${Math.round(uShare * 100)}% of pod weeks` : 'no additional scope' },
@@ -1243,14 +1266,6 @@
         // ════════════════════════════════════════════════════════════
         //  ROADMAP TIMELINE
         // ════════════════════════════════════════════════════════════
-        function setGranularity(g) {
-            state.settings.granularity = g;
-            saveState();
-            document.querySelectorAll('#granularitySeg button').forEach(b =>
-                b.classList.toggle('active', b.dataset.gran === g));
-            renderRoadmap();
-        }
-
         // Greedy row packing: items into the fewest rows without horizontal overlap
         function packRows(items) {
             const sorted = [...items].sort((a, b) => a.start.localeCompare(b.start) || b.end.localeCompare(a.end));
@@ -1270,8 +1285,7 @@
         function renderRoadmap() {
             const el = document.getElementById('roadmap');
             const items = filteredItems();
-            const gran = state.settings.granularity;
-            const showMonths = gran === 'month';
+            const showMonths = true; // fixed view: quarters + months
             const lanes = workstreams(items);
 
             let html = `<div class="rm-header">
@@ -1334,7 +1348,7 @@
                 html += `<div class="rm-lane" style="min-height:${h}px">
                     <div class="rm-lane-label">
                         <div class="ws-name">${esc(ws)}</div>
-                        <div class="ws-meta">${bars.length} initiative${bars.length === 1 ? '' : 's'}${miles.length ? ` · ${miles.length} milestone${miles.length === 1 ? '' : 's'}` : ''}</div>
+                        <div class="ws-meta">${bars.length} epic${bars.length === 1 ? '' : 's'}${miles.length ? ` · ${miles.length} milestone${miles.length === 1 ? '' : 's'}` : ''}</div>
                     </div>
                     <div class="rm-lane-track" data-ws="${esc(ws)}" style="min-height:${h}px">${track}</div>
                 </div>`;
@@ -1426,7 +1440,7 @@
                     const deps = (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join(', ');
                     tt.innerHTML = `<div class="tt-title">${esc(displayName(it))}</div>
                         ${it.alias ? `<div class="tt-row" style="font-size:0.68rem">${esc(it.name)}</div>` : ''}
-                        <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}${it.unplanned ? ' · <b style="color:var(--warning)">Unplanned scope</b>' : ''}</div>
+                        <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Epic'}</b> · ${esc(it.workstream)}${it.unplanned ? ' · <b style="color:var(--warning)">Unplanned scope</b>' : ''}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
                         ${deps ? `<div class="tt-row">Depends on: <b>${esc(deps)}</b></div>` : ''}
@@ -1533,7 +1547,7 @@
             const epics = all.filter(i => i.podWeeks > 0);
             const unsized = all.length - epics.length;
             document.getElementById('matrixUnsized').textContent =
-                unsized ? `${unsized} unsized initiative${unsized === 1 ? '' : 's'} not shown — set pod weeks via the GitLab "Epic Size" label or in the item editor.` : '';
+                unsized ? `${unsized} unsized epic${unsized === 1 ? '' : 's'} not shown — set pod weeks via the GitLab "Epic Size" label or in the item editor.` : '';
             const ctx = document.getElementById('matrixChart');
             charts.matrix?.destroy();
             charts.matrix = new Chart(ctx, {
@@ -1774,7 +1788,7 @@
                 <tr>
                     <td><b>${esc(displayName(it))}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)" title="${esc(it.name)}">${esc(it.name)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
-                    <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
+                    <td>${it.type === 'milestone' ? '◆ Milestone' : 'Epic'}</td>
                     <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
                     <td>${it.type === 'milestone' ? '–' : it.end + slipBadge(it)}</td>
                     <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
@@ -1998,7 +2012,7 @@
 
             // ── Sheet 1: Roadmap (Gantt grid) ──
             const ws = wb.addWorksheet('Roadmap', { views: [{ state: 'frozen', xSplit: 5, ySplit: 1 }] });
-            const fixedCols = ['Pod', 'Initiative', 'Status', 'Priority', 'Progress'];
+            const fixedCols = ['Pod', 'Epic', 'Status', 'Priority', 'Progress'];
             const headers = [...fixedCols];
             const colMeta = []; // {type:'q'|'m', q: 0-3, m: 0-11}
             for (let q = 0; q < 4; q++) {
@@ -2082,7 +2096,7 @@
             // ── Sheet 2: Items (data) ──
             const itemRows = items.map(it => ({
                 'Pod': it.workstream, 'Name': it.name, 'Alias': it.alias || '',
-                'Type': it.type === 'milestone' ? 'Milestone' : 'Initiative',
+                'Type': it.type === 'milestone' ? 'Milestone' : 'Epic',
                 'Start': it.start, 'End': it.type === 'milestone' ? it.start : it.end,
                 'Status': STATUS_META[it.status].label, 'Priority': PRIO_META[it.priority].label,
                 'Scope': it.unplanned ? 'Unplanned' : 'Planned',
@@ -2134,7 +2148,7 @@
             const columns = ['Pod', 'Name', 'Alias', 'Type', 'Scope', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
             const data = items.map(it => ({
                 Pod: it.workstream, Name: it.name, Alias: it.alias || '',
-                Type: it.type === 'milestone' ? 'Milestone' : 'Initiative',
+                Type: it.type === 'milestone' ? 'Milestone' : 'Epic',
                 Scope: it.unplanned ? 'Unplanned' : 'Planned',
                 Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
                 Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
@@ -2346,7 +2360,7 @@
                 addHeader(slide2, 'Priority Ranking', 'Score = business value ÷ pod weeks, weighted by MoSCoW — decision basis for sequencing');
                 const headerOpts = { fill: { color: C.darkGray }, color: 'FFFFFF', bold: true, fontSize: 10, fontFace: 'Arial', valign: 'middle' };
                 const tblRows = [[
-                    { text: '#', options: headerOpts }, { text: 'Initiative', options: headerOpts },
+                    { text: '#', options: headerOpts }, { text: 'Epic', options: headerOpts },
                     { text: 'Pod', options: headerOpts }, { text: 'Priority', options: headerOpts },
                     { text: 'Value', options: headerOpts },
                     { text: 'Pod Wks', options: headerOpts },
@@ -2425,6 +2439,7 @@
             if (st) parts.push('Status: ' + STATUS_META[st].label);
             if (pr) parts.push('Priority: ' + PRIO_META[pr].label);
             if (sc) parts.push(sc === 'unplanned' ? 'Unplanned scope' : 'Planned scope');
+            if (quarterFilter.size) parts.push([...quarterFilter].sort().map(q => 'Q' + (q + 1)).join('+'));
             if (q) parts.push(`Search: "${q}"`);
             return parts.length ? 'Filtered view — ' + parts.join(' · ') : '';
         }
@@ -2466,7 +2481,7 @@
             document.getElementById('exportHead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
             document.getElementById('exportBody').innerHTML = items.map(it => `<tr>
                 <td>${esc(it.workstream)}</td><td><b>${esc(displayName(it))}</b></td>
-                <td>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</td>
+                <td>${it.type === 'milestone' ? 'Milestone' : 'Epic'}</td>
                 <td>${it.start}</td><td>${it.type === 'milestone' ? '–' : it.end}</td>
                 <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
                 <td><span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span></td>
@@ -2757,7 +2772,7 @@
                 const expanded = gl.expanded.has(e.id);
                 return `<tr>
                     <td><a href="${esc(e.webUrl)}" target="_blank" rel="noopener" style="color:var(--link);text-decoration:none"><b>${esc(e.title)}</b></a>
-                        <div style="font-size:0.65rem;color:var(--medium-gray)">${esc(e.reference)}</div></td>
+                        <div style="font-size:0.65rem;color:var(--medium-gray)">${esc(e.reference)}${it?.alias ? ` · Alias: <b>${esc(it.alias)}</b>` : ''}</div></td>
                     <td><span class="badge ${e.state === 'closed' ? 'badge-done' : 'badge-success'}">${e.state === 'closed' ? 'Closed' : 'Open'}</span></td>
                     <td>${e.startDate || '–'}</td>
                     <td>${e.dueDate || '–'}</td>
@@ -3040,8 +3055,6 @@
         initNav();
         initYearSelect();
         refreshFilterOptions();
-        document.querySelectorAll('#granularitySeg button').forEach(b =>
-            b.classList.toggle('active', b.dataset.gran === state.settings.granularity));
         renderAll();
         setStatus('Ready');
         glInit();
