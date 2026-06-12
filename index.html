@@ -729,6 +729,14 @@
             </div>
 
             <div class="export-section">
+                <h3>Share as standalone HTML</h3>
+                <div class="hint">One self-contained HTML file with the current roadmap embedded. Send it to anyone — they just open it (double-click), no import and no GitLab token needed. GitLab drill-down works from the embedded issue snapshots; your access token is never included.</div>
+                <div class="export-controls">
+                    <button class="export-btn accent" onclick="exportStandaloneHtml()">Export standalone HTML</button>
+                </div>
+            </div>
+
+            <div class="export-section">
                 <h3>Data Backup</h3>
                 <div class="hint">Roadmap data is stored locally in this browser. Use JSON export/import to back up, share or move between machines.</div>
                 <div class="export-controls">
@@ -862,6 +870,9 @@
                     style="flex:1;max-width:320px;padding:0.3rem 0.5rem;border:1px solid var(--light-gray);border-radius:4px;font-size:0.8rem"
                     onkeydown="if(event.key==='Enter')this.blur()" onblur="saveAliasFromDetails(this.value)">
                 <span style="font-size:0.65rem;color:var(--medium-gray)">Enter to save</span>
+                <label class="toggle-label" style="margin-left:auto;font-size:0.75rem">
+                    <input type="checkbox" id="detailUnplanned" onchange="saveUnplannedFromDetails(this.checked)"> Unplanned scope
+                </label>
             </div>
             <div class="detail-meta" id="detailMeta"></div>
             <div id="detailDescription"></div>
@@ -1992,6 +2003,7 @@
             document.getElementById('detailTitle').textContent = displayName(it);
             document.getElementById('detailSubtitle').textContent = it.alias ? it.name : '';
             document.getElementById('detailAlias').value = it.alias || '';
+            document.getElementById('detailUnplanned').checked = !!it.unplanned;
             const d = slipMonths(it);
             document.getElementById('detailBadges').innerHTML = `
                 <span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span>
@@ -2024,6 +2036,14 @@
             document.getElementById('detailOverlay').classList.add('open');
         }
         function closeDetails() { document.getElementById('detailOverlay').classList.remove('open'); detailsId = null; }
+        function saveUnplannedFromDetails(checked) {
+            const it = detailsId ? byId(detailsId) : null;
+            if (!it) return;
+            if (checked) it.unplanned = true; else delete it.unplanned;
+            saveState();
+            renderAll();
+            openDetails(it.id); // refresh badges in the open modal
+        }
         function saveAliasFromDetails(val) {
             const it = detailsId ? byId(detailsId) : null;
             if (!it) return;
@@ -2643,6 +2663,26 @@
         function exportJson() {
             downloadBlob(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }),
                 `roadmap_data_${stamp()}.json`);
+        }
+        // Standalone HTML: the full app with the current roadmap embedded, so a recipient
+        // just opens the file — no import, no GitLab token (issue snapshots travel inside
+        // the data). The GitLab PAT lives in a separate localStorage key and is never part
+        // of `state`, so it cannot leak through this export.
+        function exportStandaloneHtml() {
+            const clone = document.documentElement.cloneNode(true);
+            // drop any prior embedded snapshot (re-exporting from a snapshot copy)
+            clone.querySelectorAll('script[data-roadmap-snapshot]').forEach(n => n.remove());
+            // escape '<' so a description containing a script close tag can't break out
+            const json = JSON.stringify(state).replace(/</g, '\\u003c');
+            const snap = document.createElement('script');
+            snap.setAttribute('data-roadmap-snapshot', '');
+            const meta = JSON.stringify({ exportedAt: stamp() }).replace(/</g, '\\u003c');
+            snap.textContent = `window.__ROADMAP_SNAPSHOT__ = ${json}; window.__ROADMAP_SNAPSHOT_META__ = ${meta};`;
+            // run before the main script defines loadState — prepend into <head>
+            const head = clone.querySelector('head');
+            head.insertBefore(snap, head.firstChild);
+            const html = '<!DOCTYPE html>\n' + clone.outerHTML;
+            downloadBlob(new Blob([html], { type: 'text/html' }), `roadmap_snapshot_${stamp()}.html`);
         }
         function importJson(ev) {
             const file = ev.target.files[0];
@@ -3267,12 +3307,23 @@
         });
         window.addEventListener('resize', () => { if (activeTab() === 'roadmap') renderRoadmap(); });
 
+        // Thin banner shown only when running as a shared standalone snapshot, so the
+        // viewer knows this is a point-in-time copy and their edits won't persist.
+        function showSnapshotBanner() {
+            const when = window.__ROADMAP_SNAPSHOT_META__?.exportedAt;
+            const bar = document.createElement('div');
+            bar.style.cssText = 'background:var(--surface,#ECEBE4);border-bottom:1px solid var(--light-gray,#CCCABC);color:var(--dark-gray,#404040);font-size:0.75rem;padding:0.4rem 1rem;text-align:center;';
+            bar.innerHTML = `Shared snapshot${when ? ' · exported ' + esc(when) : ''} — read-only copy; changes you make here are not saved.`;
+            document.body.insertBefore(bar, document.body.firstChild);
+        }
+
         loadState();
+        if (SNAPSHOT_MODE) showSnapshotBanner();
         initNav();
         initYearSelect();
         refreshFilterOptions();
         renderAll();
-        setStatus('Ready');
+        setStatus(SNAPSHOT_MODE ? 'Snapshot' : 'Ready');
         glInit();
     </script>
 </body>
