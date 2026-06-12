@@ -1423,8 +1423,9 @@
                     const it = byId(node.dataset.id || node.previousElementSibling?.dataset?.id);
                     if (!it) return;
                     const meta = STATUS_META[it.status];
-                    const deps = (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ');
-                    tt.innerHTML = `<div class="tt-title">${esc(it.name)}${it.alias ? ` <span style="font-weight:400;color:var(--medium-gray)">(${esc(it.alias)})</span>` : ''}</div>
+                    const deps = (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join(', ');
+                    tt.innerHTML = `<div class="tt-title">${esc(displayName(it))}</div>
+                        ${it.alias ? `<div class="tt-row" style="font-size:0.68rem">${esc(it.name)}</div>` : ''}
                         <div class="tt-row"><b>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</b> · ${esc(it.workstream)}${it.unplanned ? ' · <b style="color:var(--warning)">Unplanned scope</b>' : ''}</div>
                         <div class="tt-row"><b>${it.type === 'milestone' ? it.start : it.start + ' → ' + it.end}</b> · ${meta.label}${it.type === 'epic' ? ` · ${it.progress || 0}%` : ''}</div>
                         ${it.type === 'epic' ? `<div class="tt-row">Value <b>${it.value}</b> · ${it.podWeeks > 0 ? `Size <b>${it.podWeeks} PW</b>` : 'unsized'} · Demand <b>${capTotal(it)} PD</b></div>` : ''}
@@ -1571,10 +1572,10 @@
 
         function prioRows() {
             return filteredItems().filter(i => i.type === 'epic').map(it => ({
-                id: it.id, name: it.name, workstream: it.workstream, priority: it.priority,
+                id: it.id, name: displayName(it), workstream: it.workstream, priority: it.priority,
                 value: it.value, podWeeks: it.podWeeks ?? 0,
                 capTotal: capTotal(it), score: score(it) ?? -1,
-                status: it.status, deps: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ')
+                status: it.status, deps: (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join(', ')
             }));
         }
 
@@ -1771,7 +1772,7 @@
             document.getElementById('itemsCount').textContent = `${rows.length} items`;
             document.getElementById('itemsBody').innerHTML = rows.map(it => `
                 <tr>
-                    <td><b>${esc(it.name)}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)">→ ${esc(it.alias)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
+                    <td><b>${esc(displayName(it))}</b>${it.alias ? `<div style="font-size:0.68rem;color:var(--medium-gray)" title="${esc(it.name)}">${esc(it.name)}</div>` : ''}${it.unplanned ? ' <span class="badge badge-warning">Unplanned</span>' : ''}${it.gitlab ? ` <a href="${esc(it.gitlab.webUrl)}" target="_blank" rel="noopener" style="text-decoration:none"><span class="badge badge-info" title="Linked to GitLab — open epic">GitLab</span></a>` : ''}</td>
                     <td>${esc(it.workstream)}</td>
                     <td>${it.type === 'milestone' ? '◆ Milestone' : 'Initiative'}</td>
                     <td>${it.start}${it.type === 'milestone' ? slipBadge(it) : ''}</td>
@@ -1779,7 +1780,7 @@
                     <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
                     <td><span class="badge ${PRIO_META[it.priority].badge}">${PRIO_META[it.priority].label}</span></td>
                     <td class="text-right">${it.type === 'milestone' ? '–' : (it.progress || 0) + '%'}</td>
-                    <td style="font-size:0.7rem;color:var(--medium-gray)">${esc((it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', ')) || '–'}</td>
+                    <td style="font-size:0.7rem;color:var(--medium-gray)">${esc((it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join(', ')) || '–'}</td>
                     <td class="row-actions">
                         <button onclick="openEditor('${it.id}')">Edit</button>
                         <button class="del" onclick="deleteItem('${it.id}')">Delete</button>
@@ -1830,7 +1831,7 @@
             });
             const depSel = document.getElementById('fDeps');
             depSel.innerHTML = state.items.filter(o => o.id !== id).map(o =>
-                `<option value="${o.id}"${it?.dependsOn?.includes(o.id) ? ' selected' : ''}>${esc(o.name)} (${o.start})</option>`).join('');
+                `<option value="${o.id}"${it?.dependsOn?.includes(o.id) ? ' selected' : ''}>${esc(displayName(o))} (${o.start})</option>`).join('');
             document.getElementById('fDescription').value = it?.description || '';
             const gi = it?.gitlab;
             document.getElementById('fGitlabField').style.display = gi ? '' : 'none';
@@ -2092,7 +2093,7 @@
                 'Demand Dev (PD)': it.capacity?.dev || 0, 'Demand BA (PD)': it.capacity?.ba || 0,
                 'Demand Test (PD)': it.capacity?.qa || 0, 'Demand SRE (PD)': it.capacity?.sre || 0,
                 'Demand SM (PD)': it.capacity?.sm || 0,
-                'Depends On': (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join(', '),
+                'Depends On': (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join(', '),
                 'Plan Start': it.gitlab?.baseline?.start || '', 'Plan End': it.gitlab?.baseline?.end || '',
                 'Slip (M)': slipMonths(it) ?? '',
                 'Description': it.description || ''
@@ -2130,15 +2131,15 @@
 
         function exportItemsCsv() {
             const items = filteredItems();
-            const columns = ['Pod', 'Name', 'Type', 'Scope', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
+            const columns = ['Pod', 'Name', 'Alias', 'Type', 'Scope', 'Start', 'End', 'Status', 'Priority', 'Progress', 'Value', 'PodWeeks', 'Score', 'DependsOn', 'Description'];
             const data = items.map(it => ({
-                Pod: it.workstream, Name: it.name,
+                Pod: it.workstream, Name: it.name, Alias: it.alias || '',
                 Type: it.type === 'milestone' ? 'Milestone' : 'Initiative',
                 Scope: it.unplanned ? 'Unplanned' : 'Planned',
                 Start: it.start, End: it.end, Status: STATUS_META[it.status].label,
                 Priority: PRIO_META[it.priority].label, Progress: it.progress || 0,
                 Value: it.value, PodWeeks: it.podWeeks ?? '', Score: score(it) ?? '',
-                DependsOn: (it.dependsOn || []).map(d => byId(d)?.name).filter(Boolean).join('; '),
+                DependsOn: (it.dependsOn || []).map(d => displayName(byId(d) || {})).filter(Boolean).join('; '),
                 Description: it.description || ''
             }));
             const header = columns.join(',');
@@ -2464,7 +2465,7 @@
                 `${items.length} items in current filtered view — exports respect active filters.`;
             document.getElementById('exportHead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>';
             document.getElementById('exportBody').innerHTML = items.map(it => `<tr>
-                <td>${esc(it.workstream)}</td><td><b>${esc(it.name)}</b></td>
+                <td>${esc(it.workstream)}</td><td><b>${esc(displayName(it))}</b></td>
                 <td>${it.type === 'milestone' ? 'Milestone' : 'Initiative'}</td>
                 <td>${it.start}</td><td>${it.type === 'milestone' ? '–' : it.end}</td>
                 <td><span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span></td>
