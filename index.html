@@ -744,6 +744,7 @@
                     <button class="export-btn" onclick="document.getElementById('jsonFile').click()">Import JSON</button>
                     <input type="file" id="jsonFile" accept=".json" style="display:none" onchange="importJson(event)">
                     <button class="export-btn" onclick="resetSample()">Reset to sample data</button>
+                    <button class="export-btn" onclick="clearNonGitlabItems()">Remove non-GitLab items</button>
                     <button class="export-btn" onclick="clearAllItems()">Clear all data</button>
                 </div>
             </div>
@@ -2720,6 +2721,19 @@
             state.items = [];
             saveState(); initYearSelect(); refreshFilterOptions(); renderAll();
             setStatus('All items removed');
+        }
+        // Purge the demo/manual items but keep everything linked to GitLab — the typical
+        // cleanup after connecting GitLab and assigning real epics to the roadmap.
+        function clearNonGitlabItems() {
+            const removed = state.items.filter(i => !i.gitlab);
+            if (!removed.length) { alert('No non-GitLab items to remove — every item is linked to a GitLab epic.'); return; }
+            if (!confirm(`Remove ${removed.length} item(s) that are not linked to GitLab (incl. sample data)? ${state.items.length - removed.length} GitLab-linked item(s) are kept.`)) return;
+            const keptIds = new Set(state.items.filter(i => i.gitlab).map(i => i.id));
+            state.items = state.items.filter(i => i.gitlab);
+            // drop dependencies that now point at deleted items
+            state.items.forEach(i => { if (i.dependsOn) i.dependsOn = i.dependsOn.filter(d => keptIds.has(d)); });
+            saveState(); initYearSelect(); refreshFilterOptions(); renderAll();
+            setStatus(`${removed.length} non-GitLab item(s) removed`);
         }
 
         function renderExportPreview() {
