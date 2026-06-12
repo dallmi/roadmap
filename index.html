@@ -850,6 +850,13 @@
             <h2 id="detailTitle" style="margin-bottom:0.25rem"></h2>
             <div id="detailSubtitle" style="font-size:0.75rem;color:var(--medium-gray);margin-bottom:0.5rem"></div>
             <div id="detailBadges" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.25rem"></div>
+            <div style="display:flex;gap:0.5rem;align-items:center;margin:0.4rem 0 0.1rem">
+                <label style="font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--medium-gray);font-weight:600">Alias</label>
+                <input type="text" id="detailAlias" placeholder="Short display name…"
+                    style="flex:1;max-width:320px;padding:0.3rem 0.5rem;border:1px solid var(--light-gray);border-radius:4px;font-size:0.8rem"
+                    onkeydown="if(event.key==='Enter')this.blur()" onblur="saveAliasFromDetails(this.value)">
+                <span style="font-size:0.65rem;color:var(--medium-gray)">Enter to save</span>
+            </div>
             <div class="detail-meta" id="detailMeta"></div>
             <div id="detailDescription"></div>
             <div id="detailGitlab"></div>
@@ -1941,6 +1948,7 @@
             detailsId = id;
             document.getElementById('detailTitle').textContent = displayName(it);
             document.getElementById('detailSubtitle').textContent = it.alias ? it.name : '';
+            document.getElementById('detailAlias').value = it.alias || '';
             const d = slipMonths(it);
             document.getElementById('detailBadges').innerHTML = `
                 <span class="badge ${STATUS_META[it.status].badge}">${STATUS_META[it.status].label}</span>
@@ -1973,6 +1981,18 @@
             document.getElementById('detailOverlay').classList.add('open');
         }
         function closeDetails() { document.getElementById('detailOverlay').classList.remove('open'); detailsId = null; }
+        function saveAliasFromDetails(val) {
+            const it = detailsId ? byId(detailsId) : null;
+            if (!it) return;
+            const alias = val.trim();
+            if ((it.alias || '') === alias) return;
+            if (alias) it.alias = alias; else delete it.alias;
+            saveState();
+            // reflect immediately in the open modal and behind it
+            document.getElementById('detailTitle').textContent = displayName(it);
+            document.getElementById('detailSubtitle').textContent = it.alias ? it.name : '';
+            renderAll();
+        }
         function editFromDetails() { const id = detailsId; closeDetails(); openEditor(id); }
 
         // ════════════════════════════════════════════════════════════
