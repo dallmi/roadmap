@@ -1925,20 +1925,39 @@
         // ════════════════════════════════════════════════════════════
         //  EPIC DETAIL VIEW (read-first)
         // ════════════════════════════════════════════════════════════
-        // Minimal, safe markdown rendering for epic descriptions: escape first, then format
+        // Minimal, safe markdown rendering for epic descriptions: escape first, then a
+        // line-based parser so GitLab-style NESTED lists (indented -/*/1. items) work.
         function mdToHtml(md) {
             if (!md) return '';
-            let h = esc(md);
+            const lines = esc(md).replace(/\r/g, '').split('\n');
+            const out = [];
+            let para = [];
+            const listStack = []; // open list tags by depth
+            const flushPara = () => { if (para.length) { out.push('<p>' + para.join('<br>') + '</p>'); para = []; } };
+            const closeLists = level => { while (listStack.length > level) out.push('</' + listStack.pop() + '>'); };
+            for (const raw of lines) {
+                const head = /^#{1,6}\s+(.+)$/.exec(raw);
+                if (head) { flushPara(); closeLists(0); out.push('<h4>' + head[1] + '</h4>'); continue; }
+                const li = /^(\s*)([-*+]|\d+\.)\s+(.+)$/.exec(raw);
+                if (li) {
+                    flushPara();
+                    const depth = 1 + Math.min(3, Math.floor(li[1].length / 2));
+                    const tag = /\d/.test(li[2]) ? 'ol' : 'ul';
+                    closeLists(depth);
+                    while (listStack.length < depth) { out.push('<' + tag + '>'); listStack.push(tag); }
+                    out.push('<li>' + li[3].replace(/^\[[ xX]\]\s*/, '') + '</li>');
+                    continue;
+                }
+                if (!raw.trim()) { flushPara(); closeLists(0); continue; }
+                if (listStack.length) { out.push('<li style="list-style:none">' + raw.trim() + '</li>'); continue; }
+                para.push(raw.trim());
+            }
+            flushPara(); closeLists(0);
+            let h = out.join('');
             h = h.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-            h = h.replace(/^#{1,6}\s*(.+)$/gm, '<h4>$1</h4>');
             h = h.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
             h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-            h = h.replace(/(^|\n)((?:[-*]\s+.*(?:\n|$))+)/g, (m, pre, block) =>
-                pre + '<ul>' + block.trim().split('\n').map(l => '<li>' + l.replace(/^[-*]\s+/, '') + '</li>').join('') + '</ul>');
-            h = h.replace(/(^|\n)((?:\d+\.\s+.*(?:\n|$))+)/g, (m, pre, block) =>
-                pre + '<ol>' + block.trim().split('\n').map(l => '<li>' + l.replace(/^\d+\.\s+/, '') + '</li>').join('') + '</ol>');
-            return h.split(/\n{2,}/).map(p =>
-                /^\s*<(h4|ul|ol)/.test(p) ? p : '<p>' + p.trim().replace(/\n/g, '<br>') + '</p>').join('');
+            return h;
         }
 
         let detailsId = null;
